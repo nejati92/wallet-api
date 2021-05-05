@@ -15,7 +15,7 @@ In order to achieve the following api requests listed below. I have decided to u
 
 - I wanted to use a single table design with the hashKey as the `id` column and the rangeKey as the `sortKey` column.
 - The reason behind using NoSql rather than SQL was that SQL will needed to have the following  3 tables in order to achieve relational database structure as shown below. This will require joining table when fetching for all the orders for a customer or all the items in an order.
-- With a single table structure, even tough you will have lots of data redundancy, it will have more efficient look up as you would be avoiding lots of joins making the api more scalable and efficient as the size of data increases.
+- With a single table structure, even tough you will have lots of data redundancy, it will have more efficient look up as you would be avoiding lots of joins making the api more scalable and efficient as the size of data increases. The SQL joins are expensive and requires scanning large portion of multiple tables in the relational database. As the data gets larger, this will become less efficient.
 
 ### Potential SQL Table Design:
 ### Customers Table
@@ -38,7 +38,7 @@ In order to achieve the following api requests listed below. I have decided to u
 | 12345          | Red Notebook  | 19.99 |
 | 12345          | Blue Notebook | 18.99 |
 
-###  DynamoDb Table Desing
+###  DynamoDb Table Design
 - The expected table structure:
   | id | sortKey | products | name | price |
   |-------------------------|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|-------|
