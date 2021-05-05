@@ -1,0 +1,33 @@
+type Query {
+  getProduct(productId: String): Product
+  
+  getAllProductsForOrder(
+    orderRef: String
+    limit: Int
+    nextToken: String
+  ): ProductConnection
+  
+  getAllOrdersForCustomer(customerId: String): OrderConnection
+}
+
+type OrderConnection {
+  nextToken: String
+  items: [Order]
+}
+
+type Order {
+  customerId: String
+  orderRef: String
+  product: [Product]
+}
+
+type ProductConnection {
+  nextToken: String
+  items: [Product]
+}
+
+type Product {
+  price: Int
+  productName: String
+  productId: String
+}

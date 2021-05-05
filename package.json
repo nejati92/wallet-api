@@ -1,0 +1,29 @@
+{
+  "name": "order-api",
+  "version": "0.1.0",
+  "bin": {
+    "order-api": "deploy/order-api.js"
+  },
+  "scripts": {
+    "build": "cp package.json ./dist/src/ && cd dist/src && npm install --production && cd ../.. && tsc &&  cd dist && zip -rq lambda.zip src/",
+    "cdk": "cdk",
+    "plan": "cdk diff",
+    "deploy": "cdk deploy"
+  },
+  "devDependencies": {
+    "@types/node": "10.17.27",
+    "aws-cdk": "1.97.0",
+    "ts-node": "^9.0.0",
+    "typescript": "3.9.7",
+    "@aws-cdk/aws-appsync": "^1.97.0",
+    "@aws-cdk/aws-lambda": "^1.97.0",
+    "@aws-cdk/aws-sns": "1.97.0",
+    "@aws-cdk/aws-sns-subscriptions": "1.97.0",
+    "@aws-cdk/aws-sqs": "1.97.0",
+    "@aws-cdk/core": "1.97.0",
+    "aws-sdk": "2.884.0",
+    "@aws-cdk/aws-dynamodb": "1.98.0",
+    "@aws-cdk/aws-ec2": "1.98.0",
+    "@aws-cdk/aws-codedeploy": "1.98.0"
+  }
+}
