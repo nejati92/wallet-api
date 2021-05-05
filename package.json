@@ -8,7 +8,8 @@
     "build": "cp package.json ./dist/src/ && cd dist/src && npm install --production && cd ../.. && tsc &&  cd dist && zip -rq lambda.zip src/",
     "cdk": "cdk",
     "plan": "cdk diff",
-    "deploy": "cdk deploy"
+    "deploy": "cdk deploy",
+    "pretty": "prettier --config .prettierrc 'src/**/*.ts' --write"
   },
   "devDependencies": {
     "@types/node": "10.17.27",
@@ -24,6 +25,7 @@
     "aws-sdk": "2.884.0",
     "@aws-cdk/aws-dynamodb": "1.98.0",
     "@aws-cdk/aws-ec2": "1.98.0",
-    "@aws-cdk/aws-codedeploy": "1.98.0"
+    "@aws-cdk/aws-codedeploy": "1.98.0",
+    "prettier": "^2.2.1"
   }
 }

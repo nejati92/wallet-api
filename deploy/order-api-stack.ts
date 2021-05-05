@@ -41,7 +41,7 @@ export class OrderApiStack extends cdk.Stack {
         type: AttributeType.STRING,
       },
       sortKey:{
-        name: "sortKEy",
+        name: "sortKey",
         type: AttributeType.STRING,
       },
       billingMode: BillingMode.PAY_PER_REQUEST
@@ -71,25 +71,17 @@ export class OrderApiStack extends cdk.Stack {
       description: `Generated on: ${new Date().toISOString()}`,
     });
 
-    const getProductsLambda: any = new lambda.Function(this, 'getProductsHandler', {
-      runtime: lambda.Runtime.NODEJS_12_X,
-      handler: 'src/lambda/getProducts.handler',
-      code: lambda.Code.fromAsset("./dist/lambda.zip"),
-      memorySize: 512,
-      description: `Generated on: ${new Date().toISOString()}`,
-    });
+    
 
     ordersTable.grantReadData(ordersLambda);
     ordersTable.grantReadData(productsLambda);
     ordersTable.grantReadData(customersLambda);
-    ordersTable.grantReadData(getProductsLambda);
 
     // Set the new Lambda function as a data source for the AppSync API
     const getOrderDataSource = api.addLambdaDataSource('getOrderDataSource', ordersLambda as any);
     const getProductDataSource = api.addLambdaDataSource('getProductDataSource', productsLambda as any);
     const getCustomerDataSource = api.addLambdaDataSource('getCustomerDataSource', customersLambda as any);
-    const getProductsDataSource = api.addLambdaDataSource('getProductsDataSource', getProductsLambda as any);
-
+    
     getOrderDataSource.createResolver({
       typeName: "Query",
       fieldName: "getAllProductsForOrder"
@@ -103,11 +95,6 @@ export class OrderApiStack extends cdk.Stack {
     getCustomerDataSource.createResolver({
       typeName: "Query",
       fieldName: "getAllOrdersForCustomer"
-    });
-
-    getProductsDataSource.createResolver({
-      typeName: "Order",
-      fieldName: "product"
     });
   }
 }
