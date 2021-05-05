@@ -8,7 +8,7 @@ export const handler = async (event: AppSyncEvent): Promise<ProductConnection> =
   console.info(`Event are ${JSON.stringify(event)}`);
   const { orderRef: id, nextToken } = event.arguments;
   const limit = event.arguments.limit ? event.arguments.limit : 10; // default to ten
-  const order = await new DynamoDb().getProductsForOrderRef(id, limit, nextToken);
-  console.info("order", JSON.stringify(order));
-  return order;
+  const response = await new DynamoDb().getProductsForOrderRef(id, limit, nextToken);
+  console.info("response", JSON.stringify(response));
+  return response;
 };

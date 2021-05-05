@@ -103,7 +103,19 @@ type Query {
 
 ### Execution of queries on AWS AppSync
 
-## System Diagram
+#### Get Product Query
+
+![Get Product](getProduct.png)
+
+#### Get Products for given OrderRef Query
+
+![Get Order](getOrder.png)
+
+#### Get Orders for given CustomerId Query
+
+![Get Order](getCustomerOrders.png)
+
+### System Diagram
 
 ![System Diagram](diagram.png)
 
