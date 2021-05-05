@@ -6,8 +6,7 @@ interface OrderConnection {
 interface Order {
   customerId: string;
   orderRef: string;
-  product?: Product[];
-  productIds?: string[];
+  products: Product[];
 }
 
 interface ProductConnection {

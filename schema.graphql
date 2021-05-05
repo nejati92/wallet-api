@@ -1,33 +1,27 @@
-type Query {
-  getProduct(productId: String): Product
-  
-  getAllProductsForOrder(
-    orderRef: String
-    limit: Int
-    nextToken: String
-  ): ProductConnection
-  
-  getAllOrdersForCustomer(customerId: String): OrderConnection
+type Order {
+  customerId: String!
+  orderRef: String!
+  products: [Product!]!
 }
 
 type OrderConnection {
   nextToken: String
-  items: [Order]
+  items: [Order!]!
 }
 
-type Order {
-  customerId: String
-  orderRef: String
-  product: [Product]
+type Product {
+  price: Float!
+  name: String!
+  productId: String!
 }
 
 type ProductConnection {
   nextToken: String
-  items: [Product]
+  items: [Product!]!
 }
 
-type Product {
-  price: Int
-  productName: String
-  productId: String
+type Query {
+  getProduct(productId: String!): Product!
+  getAllProductsForOrder(orderRef: String!, limit: Int, nextToken: String): ProductConnection!
+  getAllOrdersForCustomer(customerId: String!): OrderConnection!
 }

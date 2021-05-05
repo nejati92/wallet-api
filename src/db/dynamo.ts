@@ -13,25 +13,27 @@ export class DynamoDb {
       ExpressionAttributeValues: {
         ":id": id,
       },
-      Limit: limit ? limit : 10,
+      Limit: limit,
     };
     if (nextToken) {
-      getOrderQuery.ExclusiveStartKey = { nextToken };
+      const token = nextToken.split("-");
+      getOrderQuery.ExclusiveStartKey = { id: token[0], sortKey: token[1] };
     }
     const result = await this.client.query(getOrderQuery).promise();
     if (!result || !result.Items) {
       throw new Error("Failed to get items");
     }
     const { Items, LastEvaluatedKey } = result;
-    const products = Items.map((x) => {
-      const { sortKey, productName, price } = x;
+    const nToken = LastEvaluatedKey ? LastEvaluatedKey.id + "-" + LastEvaluatedKey.sortKey : undefined;
+    const products = Items.map((item) => {
+      const { id: productId, sortKey: productName, price } = item;
       return {
-        productId: sortKey,
+        productId,
         productName,
         price,
       };
     });
-    return { items: products, nextToken: (LastEvaluatedKey as unknown) as string };
+    return { items: products, nextToken: nToken };
   }
 
   public async getCustomerOrders(id: string, limit: number, nextToken?: string): Promise<OrderConnection> {
@@ -41,52 +43,39 @@ export class DynamoDb {
       ExpressionAttributeValues: {
         ":id": id,
       },
+      Limit: limit,
     };
+    if (nextToken) {
+      const token = nextToken.split("-");
+      getOrderQuery.ExclusiveStartKey = { id: token[0], sortKey: token[1] };
+    }
     const result = await this.client.query(getOrderQuery).promise();
     if (!result || !result.Items) {
       throw new Error("Failed to get items");
     }
-    const { Items } = result;
-    const items = Items.map((x) => {
-      const { orderRef, id, productIds } = x;
-      return { productIds, orderRef, customerId: id };
+    const { Items, LastEvaluatedKey } = result;
+    const nToken = LastEvaluatedKey ? LastEvaluatedKey.id + "-" + LastEvaluatedKey.sortKey : undefined;
+    const items = Items.map((item) => {
+      const { sortKey: orderRef, id, products } = item;
+      return { products, orderRef, customerId: id };
     });
-    return { items };
+    return { items, nextToken: nToken };
   }
 
   public async getProduct(productId: Object): Promise<Product> {
     console.info(`getProduct is called ${productId}`);
-    const getOrderQuery: DynamoDB.DocumentClient.GetItemInput = {
-      TableName: "products",
-      Key: { id: productId },
-    };
-    const result = await this.client.get(getOrderQuery).promise();
-    if (!result || !result.Item) {
-      throw new Error("Failed to get items");
-    }
-    const { id, price, name } = result.Item;
-    return { productName: name, price, productId: id };
-  }
-  public async getProducts(productIds: string[]): Promise<Product[]> {
-    console.info(`getProduct is called ${productIds}`);
-    const t = productIds.map((x) => {
-      return { id: x };
-    });
-    const getOrderQuery: DynamoDB.DocumentClient.BatchGetItemInput = {
-      RequestItems: {
-        orders: {
-          Keys: t,
-        },
+    const getOrderQuery: DynamoDB.DocumentClient.QueryInput = {
+      TableName: "orders",
+      KeyConditionExpression: "id = :id",
+      ExpressionAttributeValues: {
+        ":id": productId,
       },
     };
-    const result = await this.client.batchGet(getOrderQuery).promise();
-    if (!result || !result.Responses || !result.Responses.orders) {
+    const result = await this.client.query(getOrderQuery).promise();
+    if (!result || !result.Items || !result.Items[0]) {
       throw new Error("Failed to get items");
     }
-    const products = result.Responses.products.map((r) => {
-      const { id, price, name } = r;
-      return { productName: name, price, productId: id };
-    });
-    return products;
+    const { id, price, sortKey: productName } = result.Items[0];
+    return { productName, price, productId: id };
   }
 }

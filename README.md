@@ -64,39 +64,33 @@ In order to achieve the following api requests listed below. I have decided to u
 
 Below is my GraphQL schema:
 
-```JSON
-type Query {
-  getProduct(productId: String): Product!
-
-  getAllProductsForOrder(
-    orderRef: String
-    limit: Int
-    nextToken: String
-  ): ProductConnection!
-
-  getAllOrdersForCustomer(customerId: String): OrderConnection!
+```
+type Order {
+	customerId: String!
+	orderRef: String!
+	products: [Product!]!
 }
 
 type OrderConnection {
-  nextToken: String!
-  items: [Order]!!
-}
-
-type Order {
-  customerId: String!
-  orderRef: String!
-  product: [Product!]!
-}
-
-type ProductConnection {
-  nextToken: String!
-  items: [Product!]!
+	nextToken: String
+	items: [Order!]!
 }
 
 type Product {
-  price: Int!
-  productName: String!
-  productId: String!
+	price: Int!
+	name: String!
+	productId: String!
+}
+
+type ProductConnection {
+	nextToken: String
+	items: [Product!]!
+}
+
+type Query {
+	getProduct(productId: String!): Product!
+	getAllProductsForOrder(orderRef: String!, limit: Int, nextToken: String): ProductConnection!
+	getAllOrdersForCustomer(customerId: String!): OrderConnection!
 }
 ```
 
@@ -109,20 +103,19 @@ type Product {
 
 ### Execution of queries on AWS AppSync
 
-
-
 ## System Diagram
+
 ![System Diagram](diagram.png)
 
 # Project
-* The project included in the repo represent the explained solution.
-* The code is written in TypeScript.
-* It consist the src directory which has the:
-    * Lambda code
-    * DynamoDb code
-    * Types 
-* It also has the deploy directory
-  * This has the AWS infrastrucuture code using the cdk which will deploy the Graphql,DynamoDb and the 3 lambdas to AWS code.
-* In order to run the project you will need to do `npm run package`. This will create a zip file in `dist` directory which will be used to deploy the lambda code.
-* Once run this step, you can execute `npm run deploy` to deploy the infrastructure to AWS.(You will need AWS cli installed and setup your credentials).
 
+- The project included in the repo represent the explained solution.
+- The code is written in TypeScript.
+- It consist the src directory which has the:
+  - Lambda code
+  - DynamoDb code
+  - Types
+- It also has the deploy directory
+  - This has the AWS infrastrucuture code using the cdk which will deploy the Graphql,DynamoDb and the 3 lambdas to AWS code.
+- In order to run the project you will need to do `npm run package`. This will create a zip file in `dist` directory which will be used to deploy the lambda code.
+- Once run this step, you can execute `npm run deploy` to deploy the infrastructure to AWS.(You will need AWS cli installed and setup your credentials).
