@@ -16,6 +16,6 @@ interface ProductConnection {
 
 interface Product {
   price: number;
-  productName: string;
+  name: string;
   productId: string;
 }

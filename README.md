@@ -35,8 +35,8 @@ In order to achieve the following api requests listed below. I have decided to u
 
 | ProductId (PK) | name          | price |
 | -------------- | ------------- | ----- |
-| 12345          | Red Notebook  | 19.99 |
-| 12345          | Blue Notebook | 18.99 |
+| notebook_hardcover_red          | Red Notebook  | 19.99 |
+| notebook_hardcover_blue          | Blue Notebook | 18.99 |
 
 ###  DynamoDb Table Design
 - The expected table structure:

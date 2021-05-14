@@ -26,10 +26,10 @@ export class DynamoDb {
     const { Items, LastEvaluatedKey } = result;
     const nToken = LastEvaluatedKey ? LastEvaluatedKey.id + "-" + LastEvaluatedKey.sortKey : undefined;
     const products = Items.map((item) => {
-      const { id: productId, sortKey: productName, price } = item;
+      const { id: productId, sortKey: name, price } = item;
       return {
         productId,
-        productName,
+        name,
         price,
       };
     });
@@ -75,7 +75,7 @@ export class DynamoDb {
     if (!result || !result.Items || !result.Items[0]) {
       throw new Error("Failed to get items");
     }
-    const { id, price, sortKey: productName } = result.Items[0];
-    return { productName, price, productId: id };
+    const { id, price, sortKey: name } = result.Items[0];
+    return { name, price, productId: id };
   }
 }
