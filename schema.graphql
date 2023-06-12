@@ -1,27 +1,13 @@
-type Order {
-  customerId: String!
-  orderRef: String!
-  products: [Product!]!
+type Wallet {
+  privateKey: String!
+  publicKey: String!
+  mnemonic: String!
+  address: String!
 }
 
-type OrderConnection {
-  nextToken: String
-  items: [Order!]!
+type Mutation {
+  createWallet(network: String): Wallet!
 }
-
-type Product {
-  price: Float!
-  name: String!
-  productId: String!
-}
-
-type ProductConnection {
-  nextToken: String
-  items: [Product!]!
-}
-
 type Query {
-  getProduct(productId: String!): Product!
-  getAllProductsForOrder(orderRef: String!, limit: Int, nextToken: String): ProductConnection!
-  getAllOrdersForCustomer(customerId: String!): OrderConnection!
+  getWalletDetails(address: String): Wallet
 }

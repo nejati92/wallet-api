@@ -5,27 +5,31 @@
     "order-api": "deploy/order-api.js"
   },
   "scripts": {
-    "build": "cp package.json ./dist/src/ && cd dist/src && npm install --production && cd ../.. && tsc &&  cd dist && zip -rq lambda.zip src/",
+    "build": "npm run clean && mkdir dist && mkdir dist/src && cp package.json ./dist/src/ && cd dist/src && npm install --production && cd ../.. && tsc &&  cd dist && zip -rq lambda.zip src/",
+    "clean": "rm -rf dist",
     "cdk": "cdk",
     "plan": "cdk diff",
     "deploy": "cdk deploy",
     "pretty": "prettier --config .prettierrc 'src/**/*.ts' --write"
   },
   "devDependencies": {
-    "@types/node": "10.17.27",
-    "aws-cdk": "1.97.0",
-    "ts-node": "^9.0.0",
-    "typescript": "3.9.7",
-    "@aws-cdk/aws-appsync": "^1.97.0",
-    "@aws-cdk/aws-lambda": "^1.97.0",
-    "@aws-cdk/aws-sns": "1.97.0",
-    "@aws-cdk/aws-sns-subscriptions": "1.97.0",
-    "@aws-cdk/aws-sqs": "1.97.0",
-    "@aws-cdk/core": "1.97.0",
-    "aws-sdk": "2.884.0",
-    "@aws-cdk/aws-dynamodb": "1.98.0",
-    "@aws-cdk/aws-ec2": "1.98.0",
-    "@aws-cdk/aws-codedeploy": "1.98.0",
-    "prettier": "^2.2.1"
+    "@aws-cdk/aws-appsync": "^1.203.0",
+    "@aws-cdk/aws-dynamodb": "^1.203.0",
+    "@aws-cdk/aws-lambda": "^1.203.0",
+    "@aws-cdk/core": "^1.203.0",
+    "@graphql-codegen/cli": "^4.0.1",
+    "@types/node": "20.3.0",
+    "aws-cdk": "2.83.1",
+    "aws-sdk": "2.1395.0",
+    "prettier": "^2.8.8",
+    "ts-node": "10.9.1",
+    "typescript": "5.1.3"
+  },
+  "dependencies": {
+    "@graphql-codegen/typescript": "^4.0.0",
+    "bip39": "^3.1.0",
+    "crypto": "^1.0.1",
+    "ethereumjs-wallet": "^1.0.2",
+    "ethers": "^6.5.1"
   }
 }
