@@ -17,4 +17,16 @@ export class DynamoDb {
     await this.client.put(saveQuery).promise();
     return;
   }
+
+  public async getWallet(address: string, salt: string): Promise<any | undefined> {
+    const getQuery: DynamoDB.DocumentClient.GetItemInput = {
+      TableName: "wallet",
+      Key: {
+        id: address,
+        sortKey: salt,
+      },
+    };
+    const response = await this.client.get(getQuery).promise();
+    return response.Item || undefined;
+  }
 }

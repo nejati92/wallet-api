@@ -54,7 +54,16 @@ export class WalletApiStack extends cdk.Stack {
       description: `Generated on: ${new Date().toISOString()}`,
     });
 
+    const recoverWalletLambda: any = new lambda.Function(this, "recoverHandler", {
+      runtime: lambda.Runtime.NODEJS_16_X,
+      handler: "src/lambda/recoverWallet.handler",
+      code: lambda.Code.fromAsset("./dist/lambda.zip"),
+      memorySize: 512,
+      description: `Generated on: ${new Date().toISOString()}`,
+    });
+
     walletTable.grantFullAccess(createWalletLambda);
+    walletTable.grantFullAccess(recoverWalletLambda);
     // ordersTable.grantReadData(productsLambda);
     // ordersTable.grantReadData(customersLambda);
 
@@ -64,6 +73,13 @@ export class WalletApiStack extends cdk.Stack {
     createWalletDataSource.createResolver({
       typeName: "Mutation",
       fieldName: "createWallet",
+    });
+
+    const recoverWalletDataSource = api.addLambdaDataSource("recoverWalletDataSource", recoverWalletLambda as any);
+
+    recoverWalletDataSource.createResolver({
+      typeName: "Mutation",
+      fieldName: "recoverWallet",
     });
   }
 }
