@@ -1,14 +1,27 @@
-type Wallet {
-  privateKey: String!
-  publicKey: String!
-  mnemonic: String!
-  address: String!
+type Mutation {
+  createWallet(network: String): [Wallet]! @aws_cognito_user_pools
+  recoverWallet(address: String!, mnemonic: String!): Wallet! @aws_cognito_user_pools
 }
 
-type Mutation {
-  createWallet(network: String): Wallet!
-  recoverWallet(address: String!, mnemonic: String!): Wallet!
-}
 type Query {
-  getWalletDetails(address: String): Wallet
+  getWalletDetails(address: String): [Wallet] @aws_cognito_user_pools
+}
+
+type Balance {
+  totalAmount: String
+  tokens: [Token]
+}
+
+type Wallet {
+  address: String!
+  balance: Balance
+}
+
+type Token {
+  name: String
+  isNative: Boolean
+  amount: String
+  rawAmount: String
+  decimal: Int
+  contractAddress: String
 }

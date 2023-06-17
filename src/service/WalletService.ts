@@ -3,32 +3,37 @@ import * as ethereumjs from "ethereumjs-wallet";
 import * as bip39 from "bip39";
 import { DynamoDb } from "../db/dynamo";
 const dbClient = new DynamoDb();
-export const createWallet = async () => {
-  const mnemonic = bip39.generateMnemonic(128);
-  const { address, privateKey, publicKey } = await getWalletDetails(mnemonic);
-  const digest = createSalt(mnemonic);
-  await dbClient.saveWallet(address, digest);
-  console.log(`mnemonic: ${mnemonic}`);
-  console.log(`address: ${address}`);
-  console.log(`privateKey: ${privateKey}`);
-  console.log(`publicKey: ${publicKey}`);
+export const createWallet = async (userId: string): Promise<Wallet[] | undefined> => {
+  const { path, mnemonic } = await dbClient.getWalletPath(userId);
+  if (!path) {
+    const mnemonic = bip39.generateMnemonic(128);
+    const { address, privateKey, publicKey, path } = await getWalletDetails(mnemonic);
+    await dbClient.saveWallet(userId, address, path, mnemonic);
+    const response = await dbClient.getWallets(userId);
+    return response;
+  }
+  const index = parseInt(path.substring(15, path.length), 0);
+  const newpath = path.substring(0, 15) + `${index + 1}`;
+  const { address } = await getWalletDetails(mnemonic, newpath);
+  await dbClient.saveWallet(userId, address, newpath, mnemonic);
+  const response = await dbClient.getWallets(userId);
+  return response;
+};
+
+export const getWallets = async (userId: string): Promise<Wallet[] | undefined> => {
+  const response = await dbClient.getWallets(userId);
+  return response;
+};
+
+export const recoverWallet = async (mnemonic: string, userId: string) => {
+  const { address, privateKey, publicKey, path } = await getWalletDetails(mnemonic);
+  await dbClient.saveWallet(userId, address, path, mnemonic);
   return { mnemonic, address, privateKey, publicKey };
 };
 
-export const recoverWallet = async (address: string, mnemonic: string) => {
-  const salt = createSalt(mnemonic);
-  const wallet = await dbClient.getWallet(address, salt);
-  if (!wallet) {
-    throw new Error("NOT FOUND");
-  }
-  const { address: generatedAddress, privateKey, publicKey } = await getWalletDetails(mnemonic);
-  return { mnemonic, address: generatedAddress, privateKey, publicKey };
-};
-
-export const getWalletDetails = async (mnemonic: string) => {
+export const getWalletDetails = async (mnemonic: string, path = "m/44'/60'/0'/0/0") => {
   const seed = await bip39.mnemonicToSeed(mnemonic);
   const hdWallet = ethereumjs.hdkey.fromMasterSeed(seed);
-  const path = "m/44'/60'/0'/0/0";
   const wallet = hdWallet.derivePath(path).getWallet();
   const address = wallet.getChecksumAddressString();
   const privateKey = wallet.getPrivateKeyString();
@@ -37,7 +42,7 @@ export const getWalletDetails = async (mnemonic: string) => {
   console.log(`address: ${address}`);
   console.log(`privateKey: ${privateKey}`);
   console.log(`publicKey: ${publicKey}`);
-  return { mnemonic, address, privateKey, publicKey };
+  return { mnemonic, address, privateKey, publicKey, path };
 };
 
 export const createSalt = (mnemonic: string) => {
