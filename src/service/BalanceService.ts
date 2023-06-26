@@ -1,9 +1,8 @@
-import { Network, Alchemy, Contract } from "alchemy-sdk";
-import { formatUnits, formatEther } from "ethers";
+import { Network, Alchemy, Contract, Utils } from "alchemy-sdk";
 import { erc20Abi } from "./abi";
 const settings = {
-  apiKey: "C_C45Hn6XmvDCUaUCU09TShw8VcR_T21",
-  network: Network.ETH_MAINNET,
+  apiKey: "cNcZA1o48rlzvX3zntDD4Pva_U9VSar8",
+  network: Network.ETH_SEPOLIA,
 };
 
 const alchemy = new Alchemy(settings);
@@ -13,7 +12,7 @@ export const getBalances = async (address: string) => {
   const totalAmount = "100.00";
   const balance = await alchemy.core.getBalance(address);
   console.log(balance);
-  const nativeBalance = formatEther(balance._hex);
+  const nativeBalance = Utils.formatEther(balance._hex);
   console.log(nativeBalance);
   const tokenBalances = await alchemy.core.getTokenBalances(address);
   const t = [];
@@ -23,7 +22,7 @@ export const getBalances = async (address: string) => {
     const name = await contract.name();
     t.push({
       contractAddress: tokenBalance.contractAddress,
-      amount: formatUnits(tokenBalance.tokenBalance || "0x00", 18),
+      amount: Utils.formatUnits(tokenBalance.tokenBalance || "0x00", 18),
       name,
     });
   }

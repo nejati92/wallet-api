@@ -1,13 +1,14 @@
-import * as crypto from "crypto";
 import * as ethereumjs from "ethereumjs-wallet";
 import * as bip39 from "bip39";
 import { DynamoDb } from "../db/dynamo";
+import { SecretsManager } from "aws-sdk";
 const dbClient = new DynamoDb();
 export const createWallet = async (userId: string): Promise<Wallet[] | undefined> => {
   const { path, mnemonic } = await dbClient.getWalletPath(userId);
   if (!path) {
-    const mnemonic = bip39.generateMnemonic(128);
-    const { address, privateKey, publicKey, path } = await getWalletDetails(mnemonic);
+    //const mnemonic = bip39.generateMnemonic(128);
+    const { address, path, privateKey } = await getWalletDetails(mnemonic);
+    await new SecretsManager().createSecret({ Name: userId, SecretString: privateKey }).promise();
     await dbClient.saveWallet(userId, address, path, mnemonic);
     const response = await dbClient.getWallets(userId);
     return response;
@@ -17,6 +18,7 @@ export const createWallet = async (userId: string): Promise<Wallet[] | undefined
   const { address } = await getWalletDetails(mnemonic, newpath);
   await dbClient.saveWallet(userId, address, newpath, mnemonic);
   const response = await dbClient.getWallets(userId);
+
   return response;
 };
 
@@ -43,10 +45,4 @@ export const getWalletDetails = async (mnemonic: string, path = "m/44'/60'/0'/0/
   console.log(`privateKey: ${privateKey}`);
   console.log(`publicKey: ${publicKey}`);
   return { mnemonic, address, privateKey, publicKey, path };
-};
-
-export const createSalt = (mnemonic: string) => {
-  const salt = "asdoror3414";
-  const digest = crypto.createHmac("sha512", mnemonic).update(salt).digest("base64");
-  return digest;
 };

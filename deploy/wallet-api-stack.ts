@@ -4,6 +4,7 @@ import * as lambda from "@aws-cdk/aws-lambda";
 import { AttributeType, BillingMode, Table } from "@aws-cdk/aws-dynamodb";
 import * as cognito from "@aws-cdk/aws-cognito";
 import * as iam from "@aws-cdk/aws-iam";
+import * as secretManager from "@aws-cdk/aws-secretsmanager";
 export class WalletApiStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -70,13 +71,20 @@ export class WalletApiStack extends cdk.Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
-    const createWalletLambda = new lambda.Function(this, "ordersHandler", {
+    const createWalletLambda: any = new lambda.Function(this, "ordersHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
       handler: "src/lambda/createWallet.handler",
-      code: lambda.Code.fromAsset("./dist/lambda.zip"),
+      code: lambda.Code.asset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
     });
+    createWalletLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["secretsmanager:CreateSecret"],
+        resources: ["*"],
+      }),
+    );
 
     const recoverWalletLambda: any = new lambda.Function(this, "recoverHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
@@ -102,6 +110,22 @@ export class WalletApiStack extends cdk.Stack {
       description: `Generated on: ${new Date().toISOString()}`,
     });
 
+    const sendTransaction: any = new lambda.Function(this, "sendTxHandler", {
+      runtime: lambda.Runtime.NODEJS_16_X,
+      handler: "src/lambda/sendTransaction.handler",
+      code: lambda.Code.fromAsset("./dist/lambda.zip"),
+      memorySize: 512,
+      description: `Generated on: ${new Date().toISOString()}`,
+    });
+
+    sendTransaction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["secretsmanager:GetSecretValue"],
+        resources: ["*"],
+      }),
+    );
+
     const invokeRole = new iam.Role(this, "LambdaRole", {
       roleName: "LambdaRole",
       assumedBy: new iam.ServicePrincipal("appsync.amazonaws.com"),
@@ -117,6 +141,7 @@ export class WalletApiStack extends cdk.Stack {
             recoverWalletLambda.functionArn,
             balanceLambda.functionArn,
             getWalletLambda.functionArn,
+            sendTransaction.functionArn,
           ],
         }),
       ],
@@ -125,7 +150,7 @@ export class WalletApiStack extends cdk.Stack {
     invokeRole.attachInlinePolicy(policy);
 
     walletTable.grantFullAccess(createWalletLambda);
-     walletTable.grantFullAccess(getWalletLambda);
+    walletTable.grantFullAccess(getWalletLambda);
     walletTable.grantFullAccess(recoverWalletLambda);
 
     //Set the new Lambda function as a data source for the AppSync API
@@ -196,5 +221,22 @@ export class WalletApiStack extends cdk.Stack {
       fieldName: "getWalletDetails",
       dataSourceName: getWalletDataSource.name,
     }).addDependsOn(getWalletDataSource);
+
+    const sendTransactionSource = new appsync.CfnDataSource(this, "sendTransactionSource", {
+      apiId: api.attrApiId,
+      name: "sendTransactionSource",
+      lambdaConfig: {
+        lambdaFunctionArn: sendTransaction.functionArn,
+      },
+      type: "AWS_LAMBDA",
+      serviceRoleArn: invokeRole.roleArn,
+    });
+
+    new appsync.CfnResolver(this, "sendTransactionSourceResolver", {
+      apiId: api.attrApiId,
+      typeName: "Mutation",
+      fieldName: "sendTransaction",
+      dataSourceName: sendTransactionSource.name,
+    }).addDependsOn(sendTransactionSource);
   }
 }

@@ -10,7 +10,8 @@
     "cdk": "cdk",
     "plan": "cdk diff",
     "deploy": "cdk deploy",
-    "pretty": "prettier --config .prettierrc 'src/**/*.ts' --write"
+    "pretty": "prettier --config .prettierrc 'src/**/*.ts' --write && npm run  pretty-deploy",
+    "pretty-deploy": "prettier --config .prettierrc 'deploy/**/*.ts' --write"
   },
   "devDependencies": {
     "@aws-cdk/aws-appsync": "^1.203.0",
@@ -28,10 +29,9 @@
     "typescript": "5.1.3"
   },
   "dependencies": {
+    "@aws-cdk/aws-secretsmanager": "^1.204.0",
     "alchemy-sdk": "^2.9.0",
     "bip39": "^3.1.0",
-    "crypto": "^1.0.1",
-    "ethereumjs-wallet": "^1.0.2",
-    "ethers": "^6.6.0"
+    "ethereumjs-wallet": "^1.0.2"
   }
 }
