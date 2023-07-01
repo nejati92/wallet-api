@@ -2,6 +2,7 @@ import * as ethereumjs from "ethereumjs-wallet";
 import * as bip39 from "bip39";
 import { DynamoDb } from "../db/dynamo";
 import { SecretsManager } from "aws-sdk";
+import { Wallet } from "../types/types";
 const dbClient = new DynamoDb();
 export const createWallet = async (userId: string): Promise<Wallet[] | undefined> => {
   const { path, mnemonic } = await dbClient.getWalletPath(userId);

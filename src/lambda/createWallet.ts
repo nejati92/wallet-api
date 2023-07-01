@@ -1,4 +1,5 @@
 import { createWallet } from "../service/WalletService";
+import { Wallet } from "../types/types";
 
 export const handler = async (event: any): Promise<Wallet[] | undefined> => {
   console.info(`Event are ${JSON.stringify(event)}`);

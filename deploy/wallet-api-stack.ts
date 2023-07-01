@@ -4,7 +4,9 @@ import * as lambda from "@aws-cdk/aws-lambda";
 import { AttributeType, BillingMode, Table } from "@aws-cdk/aws-dynamodb";
 import * as cognito from "@aws-cdk/aws-cognito";
 import * as iam from "@aws-cdk/aws-iam";
-import * as secretManager from "@aws-cdk/aws-secretsmanager";
+import * as sqs from "@aws-cdk/aws-sqs";
+import * as lambdaEventSources from "@aws-cdk/aws-lambda-event-sources";
+import dynamodb = require("aws-sdk/clients/dynamodb");
 export class WalletApiStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -58,7 +60,30 @@ export class WalletApiStack extends cdk.Stack {
       value: this.region,
     });
 
-    const walletTable = new Table(this, "orders", {
+    const transactionDLQ = new sqs.Queue(this, "transactionDLQ", {
+      queueName: "TransactionDLQ",
+    });
+    const transactionQueue = new sqs.Queue(this, "transactionQueue", {
+      queueName: "TransactionQueue",
+      deliveryDelay: cdk.Duration.seconds(60),
+      visibilityTimeout: cdk.Duration.seconds(60),
+      deadLetterQueue: {
+        maxReceiveCount: 10,
+        queue: transactionDLQ,
+      },
+    });
+    const processTransactions: any = new lambda.Function(this, "processTransactions", {
+      runtime: lambda.Runtime.NODEJS_16_X,
+      handler: "src/lambda/processTransactions.handler",
+      code: lambda.Code.asset("./dist/lambda.zip"),
+      memorySize: 512,
+      description: `Generated on: ${new Date().toISOString()}`,
+    });
+    const eventSource = new lambdaEventSources.SqsEventSource(transactionQueue as any);
+
+    processTransactions.addEventSource(eventSource);
+
+    const walletTable = new Table(this, "order", {
       tableName: "wallet",
       partitionKey: {
         name: "id",
@@ -69,6 +94,40 @@ export class WalletApiStack extends cdk.Stack {
         type: AttributeType.STRING,
       },
       billingMode: BillingMode.PAY_PER_REQUEST,
+    });
+
+    const transactionsTable = new Table(this, "transactionTable", {
+      tableName: "transactionTable",
+      partitionKey: {
+        name: "PK",
+        type: AttributeType.STRING,
+      },
+      sortKey: {
+        name: "SK",
+        type: AttributeType.STRING,
+      },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+    });
+
+    transactionsTable.addGlobalSecondaryIndex({
+      partitionKey: {
+        name: "SK",
+        type: AttributeType.STRING,
+      },
+      sortKey: {
+        name: "PK",
+        type: AttributeType.STRING,
+      },
+      indexName: "GSI",
+    });
+
+    transactionsTable.addLocalSecondaryIndex({
+      indexName: "txHash",
+      sortKey: { name: "txHash", type: AttributeType.STRING },
+    });
+    transactionsTable.addLocalSecondaryIndex({
+      indexName: "nonce",
+      sortKey: { name: "nonce", type: AttributeType.NUMBER },
     });
 
     const createWalletLambda: any = new lambda.Function(this, "ordersHandler", {
@@ -126,6 +185,29 @@ export class WalletApiStack extends cdk.Stack {
       }),
     );
 
+    sendTransaction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["sqs:*"],
+        resources: ["*"],
+      }),
+    );
+    sendTransaction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["dynamodb:PutItem"],
+        resources: ["*"],
+      }),
+    );
+
+    processTransactions.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["dynamodb:BatchWriteItem"],
+        resources: ["*"],
+      }),
+    );
+
     const invokeRole = new iam.Role(this, "LambdaRole", {
       roleName: "LambdaRole",
       assumedBy: new iam.ServicePrincipal("appsync.amazonaws.com"),
@@ -152,7 +234,8 @@ export class WalletApiStack extends cdk.Stack {
     walletTable.grantFullAccess(createWalletLambda);
     walletTable.grantFullAccess(getWalletLambda);
     walletTable.grantFullAccess(recoverWalletLambda);
-
+    transactionsTable.grantFullAccess(sendTransaction);
+    transactionsTable.grantFullAccess(processTransactions);
     //Set the new Lambda function as a data source for the AppSync API
     const createWalletDataSource = new appsync.CfnDataSource(this, "createWalletDataSource", {
       apiId: api.attrApiId,
