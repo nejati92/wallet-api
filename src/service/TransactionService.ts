@@ -3,10 +3,10 @@ import { getWalletDetails } from "./WalletService";
 import { SQS, SecretsManager } from "aws-sdk";
 import { PartialTransactionEvent, Transaction } from "../types/types";
 import { TransactionDb } from "../db/transactionsDb";
-
+const network= process.env.NETWORK as "ETH_SEPOLIA"| "ETH_MAINNET"
 const settings = {
-  apiKey: "cNcZA1o48rlzvX3zntDD4Pva_U9VSar8",
-  network: Network.ETH_SEPOLIA,
+  apiKey: process.env.ALCHEMY_API_KEY,
+  network: Network[network],
 };
 const alchemy = new Alchemy(settings);
 export const createEthereumTransaction = async (
@@ -16,15 +16,15 @@ export const createEthereumTransaction = async (
   userId: string,
 ) => {
   console.log(`amount: ${amount}, address:${toAddress}, fromAddress:${fromAddress}`);
-  const secret = await new SecretsManager().getSecretValue({ SecretId: userId }).promise();
+  const secret = await new SecretsManager().getSecretValue({ SecretId: fromAddress }).promise();
   if (!secret.SecretString) throw new Error("Failed to retrive the PK");
   const privateKey = secret.SecretString;
   const value = Utils.parseEther(amount);
   const nonce = await alchemy.core.getTransactionCount(fromAddress);
   const blockNumber = await alchemy.core.getBlockNumber();
   const gasLimit = Utils.hexValue(250000);
-  const chainId = 11155111;
-  const gasPrice = Utils.parseEther("0.0000000129");
+  const chainId = parseInt(process.env.CHAIN_ID!);
+  const gasPrice = Utils.parseEther("0.0000000129"); // TODO get gas estimate
   const tx = {
     nonce,
     gasLimit,
@@ -32,15 +32,17 @@ export const createEthereumTransaction = async (
     to: toAddress,
     value,
     chainId,
+    from: fromAddress,
   };
+  console.log("Sent transaction", tx);
   const rawTx = await new Wallet(privateKey).signTransaction(tx);
   const sentTranaction = await alchemy.core.sendTransaction(rawTx);
   console.log("Sent transaction", sentTranaction);
   const transaction: Transaction = {
     nonce,
-    gasPrice: sentTranaction?.gasPrice?.toString() ||"",
+    gasPrice: sentTranaction?.gasPrice?.toString() || "",
     gasLimit: sentTranaction?.gasLimit?.toString(),
-    value: sentTranaction?.value.toNumber().toString(),
+    value: sentTranaction?.value.toString(),
     txHash: sentTranaction.hash,
     fromAddress,
     toAddress,
@@ -50,7 +52,7 @@ export const createEthereumTransaction = async (
   await new TransactionDb().saveTx(fromAddress, toAddress, transaction);
   await new SQS()
     .sendMessage({
-      QueueUrl: "https://sqs.eu-west-1.amazonaws.com/781619103453/TransactionQueue",
+      QueueUrl: process.env.TRANSACTION_QUEUE_URL!,
       MessageBody: JSON.stringify(transaction),
     })
     .promise();

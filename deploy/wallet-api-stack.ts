@@ -6,7 +6,6 @@ import * as cognito from "@aws-cdk/aws-cognito";
 import * as iam from "@aws-cdk/aws-iam";
 import * as sqs from "@aws-cdk/aws-sqs";
 import * as lambdaEventSources from "@aws-cdk/aws-lambda-event-sources";
-import dynamodb = require("aws-sdk/clients/dynamodb");
 export class WalletApiStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -56,33 +55,7 @@ export class WalletApiStack extends cdk.Stack {
       value: userPoolClient.ref || "",
     });
 
-    new cdk.CfnOutput(this, "Stack Region", {
-      value: this.region,
-    });
-
-    const transactionDLQ = new sqs.Queue(this, "transactionDLQ", {
-      queueName: "TransactionDLQ",
-    });
-    const transactionQueue = new sqs.Queue(this, "transactionQueue", {
-      queueName: "TransactionQueue",
-      deliveryDelay: cdk.Duration.seconds(60),
-      visibilityTimeout: cdk.Duration.seconds(60),
-      deadLetterQueue: {
-        maxReceiveCount: 10,
-        queue: transactionDLQ,
-      },
-    });
-    const processTransactions: any = new lambda.Function(this, "processTransactions", {
-      runtime: lambda.Runtime.NODEJS_16_X,
-      handler: "src/lambda/processTransactions.handler",
-      code: lambda.Code.asset("./dist/lambda.zip"),
-      memorySize: 512,
-      description: `Generated on: ${new Date().toISOString()}`,
-    });
-    const eventSource = new lambdaEventSources.SqsEventSource(transactionQueue as any);
-
-    processTransactions.addEventSource(eventSource);
-
+    // TABLES
     const walletTable = new Table(this, "order", {
       tableName: "wallet",
       partitionKey: {
@@ -130,13 +103,53 @@ export class WalletApiStack extends cdk.Stack {
       sortKey: { name: "nonce", type: AttributeType.NUMBER },
     });
 
+    // TRANSACTION PROCESSOR
+
+    const transactionDLQ = new sqs.Queue(this, "transactionDLQ", {
+      queueName: "TransactionDLQ",
+    });
+    const transactionQueue = new sqs.Queue(this, "transactionQueue", {
+      queueName: "TransactionQueue",
+      deliveryDelay: cdk.Duration.seconds(60),
+      visibilityTimeout: cdk.Duration.seconds(60),
+      deadLetterQueue: {
+        maxReceiveCount: 10,
+        queue: transactionDLQ,
+      },
+    });
+    const processTransactions: any = new lambda.Function(this, "processTransactions", {
+      runtime: lambda.Runtime.NODEJS_16_X,
+      handler: "src/lambda/processTransactions.handler",
+      code: lambda.Code.asset("./dist/lambda.zip"),
+      memorySize: 512,
+      description: `Generated on: ${new Date().toISOString()}`,
+    });
+    const eventSource = new lambdaEventSources.SqsEventSource(transactionQueue as any);
+
+    processTransactions.addEventSource(eventSource);
+
+
+
+    // CREATE WALLET  LAMBDA
+    const environment={
+      WALLET_TABLE:walletTable.tableName,
+      TRANSACTION_TABLE: transactionsTable.tableName,
+      REGION: process.env.REGION!,
+      ALCHEMY_API_KEY:process.env.ALCHEMY_API_KEY!,
+      NETWORK: "ETH_SEPOLIA",
+      CHAIN_ID: "11155111",
+      TRANSACTION_QUEUE_URL: transactionQueue.queueUrl
+    }
+
     const createWalletLambda: any = new lambda.Function(this, "ordersHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
       handler: "src/lambda/createWallet.handler",
       code: lambda.Code.asset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
+      environment
     });
+
     createWalletLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
@@ -145,13 +158,41 @@ export class WalletApiStack extends cdk.Stack {
       }),
     );
 
+    createWalletLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:Query"],
+        resources: [walletTable.tableArn],
+      })
+    );
+
+    // RECOVER WALLET LAMBDA
+
     const recoverWalletLambda: any = new lambda.Function(this, "recoverHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
       handler: "src/lambda/recoverWallet.handler",
       code: lambda.Code.fromAsset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
+      environment
     });
+
+    recoverWalletLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["secretsmanager:CreateSecret"],
+        resources: ["*"],
+      }),
+    );
+    recoverWalletLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["dynamodb:PutItem", "dynamodb:GetItem"],
+        resources: [walletTable.tableArn],
+      })
+    );
+
+    // BALANCE LAMBDA
 
     const balanceLambda: any = new lambda.Function(this, "balanceHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
@@ -159,7 +200,10 @@ export class WalletApiStack extends cdk.Stack {
       code: lambda.Code.fromAsset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
+      environment
     });
+
+    // GET WALLET LAMBDA
 
     const getWalletLambda: any = new lambda.Function(this, "getWalletHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
@@ -167,7 +211,18 @@ export class WalletApiStack extends cdk.Stack {
       code: lambda.Code.fromAsset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
+      environment
     });
+    
+    getWalletLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["dynamodb:GetItem","dynamodb:Query"],
+        resources: [walletTable.tableArn],
+      })
+    );
+
+    // SEND TRANSACTION LAMBDA
 
     const sendTransaction: any = new lambda.Function(this, "sendTxHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
@@ -175,6 +230,7 @@ export class WalletApiStack extends cdk.Stack {
       code: lambda.Code.fromAsset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
+      environment
     });
 
     sendTransaction.addToRolePolicy(
@@ -188,15 +244,15 @@ export class WalletApiStack extends cdk.Stack {
     sendTransaction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["sqs:*"],
-        resources: ["*"],
+        actions: ["sqs:SendMessage"],
+        resources: [transactionQueue.queueArn],
       }),
     );
     sendTransaction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["dynamodb:PutItem"],
-        resources: ["*"],
+        resources: [transactionsTable.tableArn],
       }),
     );
 
@@ -204,7 +260,7 @@ export class WalletApiStack extends cdk.Stack {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["dynamodb:BatchWriteItem"],
-        resources: ["*"],
+        resources: [transactionsTable.tableArn],
       }),
     );
 
@@ -231,11 +287,7 @@ export class WalletApiStack extends cdk.Stack {
 
     invokeRole.attachInlinePolicy(policy);
 
-    walletTable.grantFullAccess(createWalletLambda);
-    walletTable.grantFullAccess(getWalletLambda);
-    walletTable.grantFullAccess(recoverWalletLambda);
-    transactionsTable.grantFullAccess(sendTransaction);
-    transactionsTable.grantFullAccess(processTransactions);
+   
     //Set the new Lambda function as a data source for the AppSync API
     const createWalletDataSource = new appsync.CfnDataSource(this, "createWalletDataSource", {
       apiId: api.attrApiId,
