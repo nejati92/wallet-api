@@ -1,22 +1,23 @@
 import * as ethereumjs from "ethereumjs-wallet";
 import * as bip39 from "bip39";
-import { DynamoDb } from "../db/dynamo";
+import { WalletDb } from "../db/walletDb";
 import { SecretsManager } from "aws-sdk";
 import { Wallet } from "../types/types";
-const dbClient = new DynamoDb();
+const dbClient = new WalletDb();
 export const createWallet = async (userId: string): Promise<Wallet[] | undefined> => {
   const { path, mnemonic } = await dbClient.getWalletPath(userId);
   if (!path) {
-    //const mnemonic = bip39.generateMnemonic(128);
+    const mnemonic = bip39.generateMnemonic(128);
     const { address, path, privateKey } = await getWalletDetails(mnemonic);
-    await new SecretsManager().createSecret({ Name: userId, SecretString: privateKey }).promise();
+    await new SecretsManager().createSecret({ Name: address, SecretString: privateKey }).promise();
     await dbClient.saveWallet(userId, address, path, mnemonic);
     const response = await dbClient.getWallets(userId);
     return response;
   }
   const index = parseInt(path.substring(15, path.length), 0);
   const newpath = path.substring(0, 15) + `${index + 1}`;
-  const { address } = await getWalletDetails(mnemonic, newpath);
+  const { address, privateKey } = await getWalletDetails(mnemonic, newpath);
+  await new SecretsManager().createSecret({ Name: address, SecretString: privateKey }).promise();
   await dbClient.saveWallet(userId, address, newpath, mnemonic);
   const response = await dbClient.getWallets(userId);
 

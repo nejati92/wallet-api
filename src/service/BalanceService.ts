@@ -1,8 +1,9 @@
 import { Network, Alchemy, Contract, Utils } from "alchemy-sdk";
 import { erc20Abi } from "./abi";
+const network= process.env.NETWORK as "ETH_SEPOLIA"| "ETH_MAINNET"
 const settings = {
-  apiKey: "cNcZA1o48rlzvX3zntDD4Pva_U9VSar8",
-  network: Network.ETH_SEPOLIA,
+  apiKey: process.env.ALCHEMY_API_KEY,
+  network: Network[network],
 };
 
 const alchemy = new Alchemy(settings);

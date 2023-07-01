@@ -1,14 +1,14 @@
 import { DynamoDB } from "aws-sdk";
-export class DynamoDb {
+export class WalletDb {
   private client: DynamoDB.DocumentClient;
 
   constructor() {
-    this.client = new DynamoDB.DocumentClient({ region: "eu-west-1", apiVersion: "2012-08-10" });
+    this.client = new DynamoDB.DocumentClient({ region: process.env.REGION, apiVersion: "2012-08-10" });
   }
 
   public async saveWallet(userId: string, address: string, path: string, mnemonic: string): Promise<void> {
     const saveQuery: DynamoDB.DocumentClient.PutItemInput = {
-      TableName: "wallet",
+      TableName: process.env.WALLET_TABLE!,
       Item: {
         id: userId,
         sortKey: address,
@@ -17,7 +17,7 @@ export class DynamoDb {
     };
     await this.client.put(saveQuery).promise();
     const saveQuery2: DynamoDB.DocumentClient.PutItemInput = {
-      TableName: "wallet",
+      TableName: process.env.WALLET_TABLE!,
       Item: {
         id: userId,
         sortKey: userId,
@@ -31,7 +31,7 @@ export class DynamoDb {
 
   public async getWallet(address: string, salt: string): Promise<any | undefined> {
     const getQuery: DynamoDB.DocumentClient.GetItemInput = {
-      TableName: "wallet",
+      TableName: process.env.WALLET_TABLE!,
       Key: {
         id: address,
         sortKey: salt,
@@ -48,7 +48,7 @@ export class DynamoDb {
     | undefined
   > {
     const getQuery: DynamoDB.DocumentClient.QueryInput = {
-      TableName: "wallet",
+      TableName: process.env.WALLET_TABLE!,
       KeyConditionExpression: "id = :id",
       FilterExpression: "attribute_not_exists(mnemonic)",
       ExpressionAttributeValues: {
@@ -65,7 +65,7 @@ export class DynamoDb {
 
   public async getWalletPath(userId: string): Promise<any | undefined> {
     const getQuery: DynamoDB.DocumentClient.GetItemInput = {
-      TableName: "wallet",
+      TableName: process.env.WALLET_TABLE!,
       Key: {
         id: userId,
         sortKey: userId,

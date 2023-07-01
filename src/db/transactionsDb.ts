@@ -4,7 +4,7 @@ export class TransactionDb {
   private client: DynamoDB.DocumentClient;
 
   constructor() {
-    this.client = new DynamoDB.DocumentClient({ region: "eu-west-1", apiVersion: "2012-08-10" });
+    this.client = new DynamoDB.DocumentClient({ region: process.env.REGION, apiVersion: "2012-08-10" });
   }
 
   public async saveTransaction(
@@ -13,9 +13,10 @@ export class TransactionDb {
     transactionHash: string,
     transaction: Transaction,
   ): Promise<void> {
+    const tableName= process.env.TRANSACTION_TABLE!;
     const saveQuery: DynamoDB.DocumentClient.BatchWriteItemInput = {
       RequestItems: {
-        transactionTable: [
+       [tableName]: [
           {
             PutRequest: {
               Item: {
@@ -26,15 +27,15 @@ export class TransactionDb {
             },
           },
 
-          {
-            PutRequest: {
-              Item: {
-                PK: transactionHash,
-                SK: transaction.blockNumber,
-                ...transaction,
-              },
-            },
-          },
+          // {
+          //   PutRequest: {
+          //     Item: {
+          //       PK: transactionHash,
+          //       SK: transaction.blockNumber?.toString(),
+          //       ...transaction,
+          //     },
+          //   },
+          // },
         ],
       },
     };
@@ -42,13 +43,9 @@ export class TransactionDb {
     return;
   }
 
-  public async saveTx(
-    fromAddress: string,
-    toAddress: string,
-    transaction: Transaction,
-  ): Promise<void> {
+  public async saveTx(fromAddress: string, toAddress: string, transaction: Transaction): Promise<void> {
     const saveQuery: DynamoDB.DocumentClient.PutItemInput = {
-      TableName: "transactionTable",
+      TableName: process.env.TRANSACTION_TABLE!,
       Item: {
         PK: fromAddress,
         SK: toAddress,
