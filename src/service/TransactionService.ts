@@ -49,7 +49,7 @@ export const createEthereumTransaction = async (
     status: "PENDING",
     blockNumber: blockNumber + 1,
   };
-  await new TransactionDb().saveTx(fromAddress, toAddress, transaction);
+  await new TransactionDb().saveTransaction(fromAddress, toAddress, sentTranaction.hash,transaction);
   await new SQS()
     .sendMessage({
       QueueUrl: process.env.TRANSACTION_QUEUE_URL!,
@@ -60,8 +60,10 @@ export const createEthereumTransaction = async (
 };
 
 export const monitorTransaction = async (partialTx: PartialTransactionEvent) => {
+  try{
+  console.log(partialTx.txHash)
   const tx = await alchemy.core.getTransaction(partialTx.txHash);
-  console.log(tx);
+  console.log(`TX:${tx}`);
   if (tx?.confirmations && tx?.confirmations > 0 && tx?.gasPrice && tx.value && tx.from && tx.to && tx.hash) {
     const transaction: Transaction = {
       nonce: tx?.nonce,
@@ -72,6 +74,7 @@ export const monitorTransaction = async (partialTx: PartialTransactionEvent) => 
       fromAddress: tx?.from,
       toAddress: tx?.to,
       status: "PROCESSED",
+      blockNumber: tx?.blockNumber,
     };
 
     await new TransactionDb().saveTransaction(
@@ -85,4 +88,9 @@ export const monitorTransaction = async (partialTx: PartialTransactionEvent) => 
     console.log("Failed");
     throw new Error("Bad Tx");
   }
+  }catch(e){
+    console.error(`Error:${e}`)
+    throw e
+  }
+  
 };
