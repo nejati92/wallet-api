@@ -6,13 +6,13 @@ export class WalletDb {
     this.client = new DynamoDB.DocumentClient({ region: process.env.REGION, apiVersion: "2012-08-10" });
   }
 
-  public async saveWallet(userId: string, address: string, path: string, mnemonic: string): Promise<void> {
+  public async saveWallet(userId: string, address: string, index: number): Promise<void> {
     const saveQuery: DynamoDB.DocumentClient.PutItemInput = {
       TableName: process.env.WALLET_TABLE!,
       Item: {
-        id: userId,
+        id: "WALLET#" + userId,
         sortKey: address,
-        path,
+        index,
       },
     };
     await this.client.put(saveQuery).promise();
@@ -21,8 +21,7 @@ export class WalletDb {
       Item: {
         id: userId,
         sortKey: userId,
-        path,
-        mnemonic,
+        index,
       },
     };
     await this.client.put(saveQuery2).promise();
@@ -52,7 +51,7 @@ export class WalletDb {
       KeyConditionExpression: "id = :id",
       FilterExpression: "attribute_not_exists(mnemonic)",
       ExpressionAttributeValues: {
-        ":id": id,
+        ":id": "WALLET#" + id,
       },
     };
     const response = await this.client.query(getQuery).promise();
@@ -63,7 +62,7 @@ export class WalletDb {
     );
   }
 
-  public async getWalletPath(userId: string): Promise<any | undefined> {
+  public async getWalletIndex(userId: string): Promise<number | undefined> {
     const getQuery: DynamoDB.DocumentClient.GetItemInput = {
       TableName: process.env.WALLET_TABLE!,
       Key: {
@@ -71,7 +70,7 @@ export class WalletDb {
         sortKey: userId,
       },
     };
-    const response: any = await this.client.get(getQuery).promise();
-    return { path: response.Item?.path, mnemonic: response.Item?.mnemonic } || undefined;
+    const response = await this.client.get(getQuery).promise();
+    return response.Item?.index;
   }
 }

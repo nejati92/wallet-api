@@ -128,18 +128,16 @@ export class WalletApiStack extends cdk.Stack {
 
     processTransactions.addEventSource(eventSource);
 
-
-
     // CREATE WALLET  LAMBDA
-    const environment={
-      WALLET_TABLE:walletTable.tableName,
+    const environment = {
+      WALLET_TABLE: walletTable.tableName,
       TRANSACTION_TABLE: transactionsTable.tableName,
       REGION: process.env.REGION!,
-      ALCHEMY_API_KEY:process.env.ALCHEMY_API_KEY!,
+      ALCHEMY_API_KEY: process.env.ALCHEMY_API_KEY!,
       NETWORK: "ETH_SEPOLIA",
       CHAIN_ID: "11155111",
-      TRANSACTION_QUEUE_URL: transactionQueue.queueUrl
-    }
+      TRANSACTION_QUEUE_URL: transactionQueue.queueUrl,
+    };
 
     const createWalletLambda: any = new lambda.Function(this, "ordersHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
@@ -147,13 +145,13 @@ export class WalletApiStack extends cdk.Stack {
       code: lambda.Code.asset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
-      environment
+      environment,
     });
 
     createWalletLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["secretsmanager:CreateSecret"],
+        actions: ["secretsmanager:CreateSecret", "secretsmanager:GetSecretValue"],
         resources: ["*"],
       }),
     );
@@ -163,7 +161,7 @@ export class WalletApiStack extends cdk.Stack {
         effect: iam.Effect.ALLOW,
         actions: ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:Query"],
         resources: [walletTable.tableArn],
-      })
+      }),
     );
 
     // RECOVER WALLET LAMBDA
@@ -174,7 +172,7 @@ export class WalletApiStack extends cdk.Stack {
       code: lambda.Code.fromAsset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
-      environment
+      environment,
     });
 
     recoverWalletLambda.addToRolePolicy(
@@ -189,7 +187,7 @@ export class WalletApiStack extends cdk.Stack {
         effect: iam.Effect.ALLOW,
         actions: ["dynamodb:PutItem", "dynamodb:GetItem"],
         resources: [walletTable.tableArn],
-      })
+      }),
     );
 
     // BALANCE LAMBDA
@@ -200,7 +198,7 @@ export class WalletApiStack extends cdk.Stack {
       code: lambda.Code.fromAsset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
-      environment
+      environment,
     });
 
     // GET WALLET LAMBDA
@@ -211,15 +209,15 @@ export class WalletApiStack extends cdk.Stack {
       code: lambda.Code.fromAsset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
-      environment
+      environment,
     });
-    
+
     getWalletLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["dynamodb:GetItem","dynamodb:Query"],
+        actions: ["dynamodb:GetItem", "dynamodb:Query"],
         resources: [walletTable.tableArn],
-      })
+      }),
     );
 
     // SEND TRANSACTION LAMBDA
@@ -230,7 +228,7 @@ export class WalletApiStack extends cdk.Stack {
       code: lambda.Code.fromAsset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
-      environment
+      environment,
     });
 
     sendTransaction.addToRolePolicy(
@@ -287,7 +285,6 @@ export class WalletApiStack extends cdk.Stack {
 
     invokeRole.attachInlinePolicy(policy);
 
-   
     //Set the new Lambda function as a data source for the AppSync API
     const createWalletDataSource = new appsync.CfnDataSource(this, "createWalletDataSource", {
       apiId: api.attrApiId,
