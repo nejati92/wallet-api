@@ -20,39 +20,35 @@ export class TransactionDb {
           {
             PutRequest: {
               Item: {
-                PK: fromAddress,
-                SK: toAddress,
+                PK: "ADDRESS#"+fromAddress,
+                SK: transaction.blockNumber?.toString(),
+                ...transaction,
+              },
+            },
+          },
+          {
+            PutRequest: {
+              Item: {
+                PK: "ADDRESS#"+toAddress,
+                SK: transaction.blockNumber?.toString(),
                 ...transaction,
               },
             },
           },
 
-          // {
-          //   PutRequest: {
-          //     Item: {
-          //       PK: transactionHash,
-          //       SK: transaction.blockNumber?.toString(),
-          //       ...transaction,
-          //     },
-          //   },
-          // },
+          {
+            PutRequest: {
+              Item: {
+                PK: "HASH#"+transactionHash,
+                SK: transaction.blockNumber?.toString(),
+                ...transaction,
+              },
+            },
+          },
         ],
       },
     };
     await this.client.batchWrite(saveQuery).promise();
-    return;
-  }
-
-  public async saveTx(fromAddress: string, toAddress: string, transaction: Transaction): Promise<void> {
-    const saveQuery: DynamoDB.DocumentClient.PutItemInput = {
-      TableName: process.env.TRANSACTION_TABLE!,
-      Item: {
-        PK: fromAddress,
-        SK: toAddress,
-        ...transaction,
-      },
-    };
-    await this.client.put(saveQuery).promise();
     return;
   }
 }

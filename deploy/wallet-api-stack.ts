@@ -39,6 +39,8 @@ export class WalletApiStack extends cdk.Stack {
       },
     });
 
+    
+
     new appsync.CfnGraphQLSchema(this, "schema", {
       apiId: api.attrApiId,
       definition: appsync.Schema.fromAsset("./schema.graphql").definition,
@@ -82,25 +84,9 @@ export class WalletApiStack extends cdk.Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
-    transactionsTable.addGlobalSecondaryIndex({
-      partitionKey: {
-        name: "SK",
-        type: AttributeType.STRING,
-      },
-      sortKey: {
-        name: "PK",
-        type: AttributeType.STRING,
-      },
-      indexName: "GSI",
-    });
-
     transactionsTable.addLocalSecondaryIndex({
-      indexName: "txHash",
-      sortKey: { name: "txHash", type: AttributeType.STRING },
-    });
-    transactionsTable.addLocalSecondaryIndex({
-      indexName: "nonce",
-      sortKey: { name: "nonce", type: AttributeType.NUMBER },
+      indexName: "blockNumber",
+      sortKey: { name: "blockNumber", type: AttributeType.NUMBER },
     });
 
     // TRANSACTION PROCESSOR
@@ -117,16 +103,6 @@ export class WalletApiStack extends cdk.Stack {
         queue: transactionDLQ,
       },
     });
-    const processTransactions: any = new lambda.Function(this, "processTransactions", {
-      runtime: lambda.Runtime.NODEJS_16_X,
-      handler: "src/lambda/processTransactions.handler",
-      code: lambda.Code.asset("./dist/lambda.zip"),
-      memorySize: 512,
-      description: `Generated on: ${new Date().toISOString()}`,
-    });
-    const eventSource = new lambdaEventSources.SqsEventSource(transactionQueue as any);
-
-    processTransactions.addEventSource(eventSource);
 
     // CREATE WALLET  LAMBDA
     const environment = {
@@ -138,6 +114,19 @@ export class WalletApiStack extends cdk.Stack {
       CHAIN_ID: "11155111",
       TRANSACTION_QUEUE_URL: transactionQueue.queueUrl,
     };
+    const processTransactions: any = new lambda.Function(this, "processTransactions", {
+      runtime: lambda.Runtime.NODEJS_16_X,
+      handler: "src/lambda/processTransactions.handler",
+      code: lambda.Code.asset("./dist/lambda.zip"),
+      memorySize: 512,
+      description: `Generated on: ${new Date().toISOString()}`,
+      environment
+    });
+    const eventSource = new lambdaEventSources.SqsEventSource(transactionQueue as any);
+
+    processTransactions.addEventSource(eventSource);
+
+    
 
     const createWalletLambda: any = new lambda.Function(this, "ordersHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
@@ -249,7 +238,7 @@ export class WalletApiStack extends cdk.Stack {
     sendTransaction.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["dynamodb:PutItem"],
+        actions: ["dynamodb:BatchWriteItem"],
         resources: [transactionsTable.tableArn],
       }),
     );
