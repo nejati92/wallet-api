@@ -13,10 +13,10 @@ export class TransactionDb {
     transactionHash: string,
     transaction: Transaction,
   ): Promise<void> {
-    const tableName= process.env.TRANSACTION_TABLE!;
+    const tableName = process.env.TRANSACTION_TABLE!;
     const saveQuery: DynamoDB.DocumentClient.BatchWriteItemInput = {
       RequestItems: {
-       [tableName]: [
+        [tableName]: [
           {
             PutRequest: {
               Item: {

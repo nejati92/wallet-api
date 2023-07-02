@@ -3,7 +3,7 @@ import { getWalletDetails } from "./WalletService";
 import { SQS, SecretsManager } from "aws-sdk";
 import { PartialTransactionEvent, Transaction } from "../types/types";
 import { TransactionDb } from "../db/transactionsDb";
-const network= process.env.NETWORK as "ETH_SEPOLIA"| "ETH_MAINNET"
+const network = process.env.NETWORK as "ETH_SEPOLIA" | "ETH_MAINNET";
 const settings = {
   apiKey: process.env.ALCHEMY_API_KEY,
   network: Network[network],
@@ -16,7 +16,7 @@ export const createEthereumTransaction = async (
   userId: string,
 ) => {
   console.log(`amount: ${amount}, address:${toAddress}, fromAddress:${fromAddress}`);
-  const secret = await new SecretsManager().getSecretValue({ SecretId: fromAddress }).promise();
+  const secret = await new SecretsManager().getSecretValue({ SecretId: userId + fromAddress }).promise();
   if (!secret.SecretString) throw new Error("Failed to retrive the PK");
   const privateKey = secret.SecretString;
   const value = Utils.parseEther(amount);
