@@ -6,6 +6,7 @@ type Mutation {
 
 type Query {
   getWalletDetails(address: String): [Wallet] @aws_cognito_user_pools
+  getTransactions(address: String): [Transaction] @aws_cognito_user_pools
 }
 
 type Balance {
@@ -15,6 +16,7 @@ type Balance {
 type Wallet {
   address: String!
   balance: Balance
+  transactions: [Transaction]
 }
 
 type Token {
@@ -24,4 +26,16 @@ type Token {
   rawAmount: String
   decimal: Int
   contractAddress: String
+}
+
+type Transaction {
+  blockNumber: Int
+  fromAddress: String
+  gasLimit: String
+  gasPrice: String
+  nonce: Int
+  status: String
+  toAddress: String
+  value: String
+  txHash: String
 }
