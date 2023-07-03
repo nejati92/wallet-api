@@ -1,6 +1,20 @@
 # Projet
-- This project is aimed at to create an Ethereum based wallets under an HD Wallet that you can see your balanaces, transactions, send and receive transactions. Currently only Ethereum is supported. There is no erc20 token support but this will be added in the future.
-- The private key of your wallet is stored in AWS secrets manager,allowing the user to safeguard their private key and removing the need  
+-  Overall aim of the project is to build a cross chain blockchain wallet and safeguard the private keys removing the need to remember seed pharases or store your private key. This POC at the moment and keys are currently are stored in secrets manager which is not the safest thing to do. Later on, we will be looking into sharding and sigining with UBI keys.
+- Currently the project creates an ethereum based wallets under an HD Wallet that you can see your balanaces, transactions, send and receive transactions. Currently only Ethereum is supported. There is no erc20 token support but this will be added in the future.You can see your erc20tokens balances tough. This all accesible trough the graphql api.
+- There is a different [repo](https://github.com/nejati92/wallet-port) for building the front end in VUE.js
+- Below is the architecture diagram of the system:
+![Diagram](./systemdesign.jpeg)
+
+## TODOS
+- Encrypt secrets manager 
+- Consider using SQL for transactions and look into building resolvers to get data out of RDS.
+- No Pagination on transactions
+- Nonce queueing ( currently one tx at a time)
+- Transaction monitor uses the queue retry to see if it is accepted by the blockchain,after 5 retrys moves it to DLQ.This is not a great design because transaction mining can take longer then 5 retrys. Think of increasing the retrys and wait time in between or use cron lambdas.
+- Async transaction sending
+- Key sharding
+- Use an own indexer rather than 3rd party api
+
 
 
 # Code Structure
