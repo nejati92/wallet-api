@@ -39,8 +39,6 @@ export class WalletApiStack extends cdk.Stack {
       },
     });
 
-    
-
     new appsync.CfnGraphQLSchema(this, "schema", {
       apiId: api.attrApiId,
       definition: appsync.Schema.fromAsset("./schema.graphql").definition,
@@ -120,13 +118,11 @@ export class WalletApiStack extends cdk.Stack {
       code: lambda.Code.asset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
-      environment
+      environment,
     });
     const eventSource = new lambdaEventSources.SqsEventSource(transactionQueue as any);
 
     processTransactions.addEventSource(eventSource);
-
-    
 
     const createWalletLambda: any = new lambda.Function(this, "ordersHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
@@ -282,15 +278,13 @@ export class WalletApiStack extends cdk.Stack {
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
           actions: ["dynamodb:Query"],
-          resources: [
-            transactionsTable.tableArn
-          ],
+          resources: [transactionsTable.tableArn],
         }),
       ],
     });
 
     invokeRole.attachInlinePolicy(policy);
-    invokeDynamoRole.attachInlinePolicy(invokeDynamoPolicy)
+    invokeDynamoRole.attachInlinePolicy(invokeDynamoPolicy);
     //Set the new Lambda function as a data source for the AppSync API
     const createWalletDataSource = new appsync.CfnDataSource(this, "createWalletDataSource", {
       apiId: api.attrApiId,
@@ -377,16 +371,15 @@ export class WalletApiStack extends cdk.Stack {
       dataSourceName: sendTransactionSource.name,
     }).addDependsOn(sendTransactionSource);
 
-
-    // GEt Transactions 
+    // GEt Transactions
     const getTransactionSource = new appsync.CfnDataSource(this, "getTransactionSource", {
       apiId: api.attrApiId,
       name: "getTransactionSource",
-      dynamoDbConfig:{
+      dynamoDbConfig: {
         awsRegion: process.env.REGION!,
-        tableName: transactionsTable.tableName
+        tableName: transactionsTable.tableName,
       },
-      
+
       type: "AMAZON_DYNAMODB",
       serviceRoleArn: invokeDynamoRole.roleArn,
     });
@@ -396,7 +389,7 @@ export class WalletApiStack extends cdk.Stack {
       typeName: "Wallet",
       fieldName: "transactions",
       dataSourceName: getTransactionSource.name,
-      requestMappingTemplate:`
+      requestMappingTemplate: `
       #set($prefix = "ADDRESS#")
       #set($address= $ctx.source.address)
       #set($newLabel = $prefix + $address)
@@ -413,7 +406,7 @@ export class WalletApiStack extends cdk.Stack {
           }
         }
       }`,
-      responseMappingTemplate: `$util.toJson($context.result.items)`
+      responseMappingTemplate: `$util.toJson($context.result.items)`,
     }).addDependsOn(getTransactionSource);
 
     new appsync.CfnResolver(this, "getTransactions", {
@@ -421,7 +414,7 @@ export class WalletApiStack extends cdk.Stack {
       typeName: "Query",
       fieldName: "getTransactions",
       dataSourceName: getTransactionSource.name,
-      requestMappingTemplate:`
+      requestMappingTemplate: `
       #set($prefix = "ADDRESS#")
       #set($address= $ctx.arguments.address)
       #set($newLabel = $prefix + $address)
@@ -438,7 +431,7 @@ export class WalletApiStack extends cdk.Stack {
           }
         }
       }`,
-      responseMappingTemplate: `$util.toJson($context.result.items)`
+      responseMappingTemplate: `$util.toJson($context.result.items)`,
     }).addDependsOn(getTransactionSource);
   }
 }

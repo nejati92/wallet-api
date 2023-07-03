@@ -20,7 +20,7 @@ export class TransactionDb {
           {
             PutRequest: {
               Item: {
-                PK: "ADDRESS#"+fromAddress,
+                PK: "ADDRESS#" + fromAddress,
                 SK: transaction.blockNumber?.toString(),
                 ...transaction,
               },
@@ -29,7 +29,7 @@ export class TransactionDb {
           {
             PutRequest: {
               Item: {
-                PK: "ADDRESS#"+toAddress,
+                PK: "ADDRESS#" + toAddress,
                 SK: transaction.blockNumber?.toString(),
                 ...transaction,
               },
@@ -39,7 +39,7 @@ export class TransactionDb {
           {
             PutRequest: {
               Item: {
-                PK: "HASH#"+transactionHash,
+                PK: "HASH#" + transactionHash,
                 SK: transaction.blockNumber?.toString(),
                 ...transaction,
               },
