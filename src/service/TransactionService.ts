@@ -24,7 +24,7 @@ export const createEthereumTransaction = async (
   const blockNumber = await alchemy.core.getBlockNumber();
   const gasLimit = Utils.hexValue(250000);
   const chainId = parseInt(process.env.CHAIN_ID!);
-  const gasPrice = Utils.parseEther("0.0000000129"); // TODO get gas estimate
+  const gasPrice = await alchemy.core.getGasPrice();
   const tx = {
     nonce,
     gasLimit,
@@ -49,7 +49,7 @@ export const createEthereumTransaction = async (
     status: "PENDING",
     blockNumber: blockNumber + 1,
   };
-  await new TransactionDb().saveTransaction(fromAddress, toAddress, sentTranaction.hash,transaction);
+  await new TransactionDb().saveTransaction(fromAddress, toAddress, sentTranaction.hash, transaction);
   await new SQS()
     .sendMessage({
       QueueUrl: process.env.TRANSACTION_QUEUE_URL!,
@@ -60,37 +60,36 @@ export const createEthereumTransaction = async (
 };
 
 export const monitorTransaction = async (partialTx: PartialTransactionEvent) => {
-  try{
-  console.log(partialTx.txHash)
-  const tx = await alchemy.core.getTransaction(partialTx.txHash);
-  console.log(`TX:${tx}`);
-  if (tx?.confirmations && tx?.confirmations > 0 && tx?.gasPrice && tx.value && tx.from && tx.to && tx.hash) {
-    const transaction: Transaction = {
-      nonce: tx?.nonce,
-      gasPrice: tx?.gasPrice?.toString(),
-      gasLimit: tx?.gasLimit?.toString(),
-      value: tx?.value.toNumber().toString(),
-      txHash: tx?.hash,
-      fromAddress: tx?.from,
-      toAddress: tx?.to,
-      status: "PROCESSED",
-      blockNumber: tx?.blockNumber,
-    };
+  try {
+    console.log(partialTx.txHash);
+    const tx = await alchemy.core.getTransaction(partialTx.txHash);
+    console.log(`TX:${tx}`);
+    if (tx?.confirmations && tx?.confirmations > 0 && tx?.gasPrice && tx.value && tx.from && tx.to && tx.hash) {
+      const transaction: Transaction = {
+        nonce: tx?.nonce,
+        gasPrice: tx?.gasPrice?.toString(),
+        gasLimit: tx?.gasLimit?.toString(),
+        value: tx?.value.toNumber().toString(),
+        txHash: tx?.hash,
+        fromAddress: tx?.from,
+        toAddress: tx?.to,
+        status: "PROCESSED",
+        blockNumber: tx?.blockNumber,
+      };
 
-    await new TransactionDb().saveTransaction(
-      transaction.fromAddress,
-      transaction.toAddress,
-      transaction.txHash,
-      transaction,
-    );
-    console.log("passed");
-  } else {
-    console.log("Failed");
-    throw new Error("Bad Tx");
+      await new TransactionDb().saveTransaction(
+        transaction.fromAddress,
+        transaction.toAddress,
+        transaction.txHash,
+        transaction,
+      );
+      console.log("passed");
+    } else {
+      console.log("Failed");
+      throw new Error("Bad Tx");
+    }
+  } catch (e) {
+    console.error(`Error:${e}`);
+    throw e;
   }
-  }catch(e){
-    console.error(`Error:${e}`)
-    throw e
-  }
-  
 };

@@ -10,23 +10,22 @@ const alchemy = new Alchemy(settings);
 
 export const getBalances = async (address: string) => {
   console.log(address);
-  const totalAmount = "100.00";
   const balance = await alchemy.core.getBalance(address);
   console.log(balance);
   const nativeBalance = Utils.formatEther(balance._hex);
   console.log(nativeBalance);
   const tokenBalances = await alchemy.core.getTokenBalances(address);
-  const t = [];
+  const tokens = [];
   const provider = await alchemy.config.getProvider();
   for (const tokenBalance of tokenBalances.tokenBalances) {
     const contract = new Contract(tokenBalance.contractAddress, erc20Abi, provider);
     const name = await contract.name();
-    t.push({
+    tokens.push({
       contractAddress: tokenBalance.contractAddress,
       amount: Utils.formatUnits(tokenBalance.tokenBalance || "0x00", 18),
       name,
     });
   }
 
-  return { totalAmount, tokens: [{ amount: nativeBalance, isNative: true, name: "ETH" }, ...t] };
+  return { tokens: [{ amount: nativeBalance, isNative: true, name: "ETH" }, ...tokens] };
 };

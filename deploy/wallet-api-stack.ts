@@ -39,8 +39,6 @@ export class WalletApiStack extends cdk.Stack {
       },
     });
 
-    
-
     new appsync.CfnGraphQLSchema(this, "schema", {
       apiId: api.attrApiId,
       definition: appsync.Schema.fromAsset("./schema.graphql").definition,
@@ -120,13 +118,11 @@ export class WalletApiStack extends cdk.Stack {
       code: lambda.Code.asset("./dist/lambda.zip"),
       memorySize: 512,
       description: `Generated on: ${new Date().toISOString()}`,
-      environment
+      environment,
     });
     const eventSource = new lambdaEventSources.SqsEventSource(transactionQueue as any);
 
     processTransactions.addEventSource(eventSource);
-
-    
 
     const createWalletLambda: any = new lambda.Function(this, "ordersHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
@@ -272,8 +268,23 @@ export class WalletApiStack extends cdk.Stack {
       ],
     });
 
-    invokeRole.attachInlinePolicy(policy);
+    const invokeDynamoRole = new iam.Role(this, "invokeDynamoRole", {
+      roleName: "invokeDynamoRole",
+      assumedBy: new iam.ServicePrincipal("appsync.amazonaws.com"),
+    });
+    const invokeDynamoPolicy = new iam.Policy(this, "invokeDynamoPolicy", {
+      policyName: "invokeDynamoPolicy",
+      statements: [
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: ["dynamodb:Query"],
+          resources: [transactionsTable.tableArn],
+        }),
+      ],
+    });
 
+    invokeRole.attachInlinePolicy(policy);
+    invokeDynamoRole.attachInlinePolicy(invokeDynamoPolicy);
     //Set the new Lambda function as a data source for the AppSync API
     const createWalletDataSource = new appsync.CfnDataSource(this, "createWalletDataSource", {
       apiId: api.attrApiId,
@@ -359,5 +370,68 @@ export class WalletApiStack extends cdk.Stack {
       fieldName: "sendTransaction",
       dataSourceName: sendTransactionSource.name,
     }).addDependsOn(sendTransactionSource);
+
+    // GEt Transactions
+    const getTransactionSource = new appsync.CfnDataSource(this, "getTransactionSource", {
+      apiId: api.attrApiId,
+      name: "getTransactionSource",
+      dynamoDbConfig: {
+        awsRegion: process.env.REGION!,
+        tableName: transactionsTable.tableName,
+      },
+
+      type: "AMAZON_DYNAMODB",
+      serviceRoleArn: invokeDynamoRole.roleArn,
+    });
+
+    new appsync.CfnResolver(this, "getWalletTransactions", {
+      apiId: api.attrApiId,
+      typeName: "Wallet",
+      fieldName: "transactions",
+      dataSourceName: getTransactionSource.name,
+      requestMappingTemplate: `
+      #set($prefix = "ADDRESS#")
+      #set($address= $ctx.source.address)
+      #set($newLabel = $prefix + $address)
+      {
+        "version": "2017-02-28",
+        "operation": "Query",
+        "query": {
+          "expression": "#PK = :address",
+          "expressionNames": {
+            "#PK": "PK"
+          },
+          "expressionValues": {
+            ":address": $util.dynamodb.toDynamoDBJson($newLabel)
+          }
+        }
+      }`,
+      responseMappingTemplate: `$util.toJson($context.result.items)`,
+    }).addDependsOn(getTransactionSource);
+
+    new appsync.CfnResolver(this, "getTransactions", {
+      apiId: api.attrApiId,
+      typeName: "Query",
+      fieldName: "getTransactions",
+      dataSourceName: getTransactionSource.name,
+      requestMappingTemplate: `
+      #set($prefix = "ADDRESS#")
+      #set($address= $ctx.arguments.address)
+      #set($newLabel = $prefix + $address)
+      {
+        "version": "2017-02-28",
+        "operation": "Query",
+        "query": {
+          "expression": "#PK = :address",
+          "expressionNames": {
+            "#PK": "PK"
+          },
+          "expressionValues": {
+            ":address": $util.dynamodb.toDynamoDBJson($newLabel)
+          }
+        }
+      }`,
+      responseMappingTemplate: `$util.toJson($context.result.items)`,
+    }).addDependsOn(getTransactionSource);
   }
 }
