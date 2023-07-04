@@ -17,12 +17,12 @@ export const createEthereumTransaction = async (
 ) => {
   console.log(`amount: ${amount}, address:${toAddress}, fromAddress:${fromAddress}`);
   const secret = await new SecretsManager().getSecretValue({ SecretId: userId + fromAddress }).promise();
-  if (!secret.SecretString) throw new Error("Failed to retrive the PK");
+  if (!secret.SecretString) throw new Error("Failed to retrieve the PK");
   const privateKey = secret.SecretString;
   const value = Utils.parseEther(amount);
   const nonce = await alchemy.core.getTransactionCount(fromAddress);
   const blockNumber = await alchemy.core.getBlockNumber();
-  const gasLimit = Utils.hexValue(250000);
+  const gasLimit = Utils.hexValue(250000); // TODO: make this config base
   const chainId = parseInt(process.env.CHAIN_ID!);
   const gasPrice = await alchemy.core.getGasPrice();
   const tx = {
@@ -36,27 +36,27 @@ export const createEthereumTransaction = async (
   };
   console.log("Sent transaction", tx);
   const rawTx = await new Wallet(privateKey).signTransaction(tx);
-  const sentTranaction = await alchemy.core.sendTransaction(rawTx);
-  console.log("Sent transaction", sentTranaction);
+  const sentTransaction = await alchemy.core.sendTransaction(rawTx);
+  console.log("Sent transaction", sentTransaction);
   const transaction: Transaction = {
     nonce,
-    gasPrice: sentTranaction?.gasPrice?.toString() || "",
-    gasLimit: sentTranaction?.gasLimit?.toString(),
-    value: sentTranaction?.value.toString(),
-    txHash: sentTranaction.hash,
+    gasPrice: gasPrice.toString(),
+    gasLimit: sentTransaction?.gasLimit?.toString(),
+    value: sentTransaction?.value.toString(),
+    txHash: sentTransaction.hash,
     fromAddress,
     toAddress,
     status: "PENDING",
     blockNumber: blockNumber + 1,
   };
-  await new TransactionDb().saveTransaction(fromAddress, toAddress, sentTranaction.hash, transaction);
+  await new TransactionDb().saveTransaction(fromAddress, toAddress, sentTransaction.hash, transaction);
   await new SQS()
     .sendMessage({
       QueueUrl: process.env.TRANSACTION_QUEUE_URL!,
       MessageBody: JSON.stringify(transaction),
     })
     .promise();
-  return sentTranaction.hash;
+  return sentTransaction.hash;
 };
 
 export const monitorTransaction = async (partialTx: PartialTransactionEvent) => {
