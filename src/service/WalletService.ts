@@ -4,9 +4,8 @@ import { WalletDb } from "../db/walletDb";
 import { SecretsManager } from "aws-sdk";
 import { Wallet } from "../types/types";
 const dbClient = new WalletDb();
-export const createWallet = async (userId: string): Promise<Wallet[] | undefined> => {
+export const createWallet = async (userId: string): Promise<Wallet[]> => {
   let index = await dbClient.getWalletIndex(userId);
-  console.log(index);
   if (!index && index !== 0) {
     const mnemonic = bip39.generateMnemonic(128);
     await new SecretsManager().createSecret({ Name: userId, SecretString: mnemonic }).promise();
@@ -23,13 +22,16 @@ export const saveAndGetAllWallets = async (userId: string, mnemonic: string, ind
   const { address, privateKey } = await getWalletDetails(mnemonic, index);
   await new SecretsManager().createSecret({ Name: userId + address, SecretString: privateKey }).promise();
   await dbClient.saveWallet(userId, address, index);
-  const response = await dbClient.getWallets(userId);
-  return response;
+  const wallets = await getWallets(userId);
+  return wallets;
 };
 
-export const getWallets = async (userId: string): Promise<Wallet[] | undefined> => {
-  const response = await dbClient.getWallets(userId);
-  return response;
+export const getWallets = async (userId: string): Promise<Wallet[]> => {
+  const wallets = await dbClient.getWallets(userId);
+  if (!wallets || wallets?.length === 0) {
+    throw new Error("Failed to retrieve wallets");
+  }
+  return wallets;
 };
 
 export const recoverWallet = async (mnemonic: string, userId: string) => {
@@ -41,11 +43,11 @@ export const recoverWallet = async (mnemonic: string, userId: string) => {
 };
 
 export const getWalletDetails = async (mnemonic: string, index = 0) => {
-  const wallletPath = "m/44'/60'/0'/0/" + index.toString();
+  const walletPath = "m/44'/60'/0'/0/" + index.toString();
   console.log(`index:${index}`);
   const seed = await bip39.mnemonicToSeed(mnemonic);
   const hdWallet = ethereumjs.hdkey.fromMasterSeed(seed);
-  const wallet = hdWallet.derivePath(wallletPath).getWallet();
+  const wallet = hdWallet.derivePath(walletPath).getWallet();
   const address = wallet.getChecksumAddressString();
   const privateKey = wallet.getPrivateKeyString();
   const publicKey = wallet.getPublicKeyString();

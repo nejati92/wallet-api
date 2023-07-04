@@ -7,42 +7,38 @@ export class WalletDb {
   }
 
   public async saveWallet(userId: string, address: string, index: number): Promise<void> {
-    const saveQuery: DynamoDB.DocumentClient.PutItemInput = {
-      TableName: process.env.WALLET_TABLE!,
-      Item: {
-        id: "WALLET#" + userId,
-        sortKey: address,
-        index,
+    const tableName = process.env.WALLET_TABLE!;
+    const batchWrite: DynamoDB.DocumentClient.BatchWriteItemInput = {
+      RequestItems: {
+        [tableName]: [
+          {
+            PutRequest: {
+              Item: {
+                id: "WALLET#" + userId,
+                sortKey: address,
+                index,
+              },
+            },
+          },
+          {
+            PutRequest: {
+              Item: {
+                id: userId,
+                sortKey: userId,
+                index,
+              },
+            },
+          },
+        ],
       },
     };
-    await this.client.put(saveQuery).promise();
-    const saveQuery2: DynamoDB.DocumentClient.PutItemInput = {
-      TableName: process.env.WALLET_TABLE!,
-      Item: {
-        id: userId,
-        sortKey: userId,
-        index,
-      },
-    };
-    await this.client.put(saveQuery2).promise();
+    await this.client.batchWrite(batchWrite).promise();
     return;
-  }
-
-  public async getWallet(address: string, salt: string): Promise<any | undefined> {
-    const getQuery: DynamoDB.DocumentClient.GetItemInput = {
-      TableName: process.env.WALLET_TABLE!,
-      Key: {
-        id: address,
-        sortKey: salt,
-      },
-    };
-    const response = await this.client.get(getQuery).promise();
-    return response.Item || undefined;
   }
 
   public async getWallets(id: string): Promise<
     | {
-        address: any;
+        address: string;
       }[]
     | undefined
   > {

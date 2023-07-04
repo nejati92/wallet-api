@@ -6,6 +6,10 @@
 ![Diagram](./systemdesign.jpeg)
 
 ## TODOS
+- TESTS
+- CONFIG PARSER
+- Validation params
+- Improve error handling and have types (ie failed validation)
 - Encrypt secrets manager 
 - Consider using SQL for transactions and look into building resolvers to get data out of RDS.
 - No Pagination on transactions

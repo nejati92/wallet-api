@@ -285,6 +285,12 @@ export class WalletApiStack extends cdk.Stack {
 
     invokeRole.attachInlinePolicy(policy);
     invokeDynamoRole.attachInlinePolicy(invokeDynamoPolicy);
+    const responseTemplate = `
+    if (!$util.isNull($ctx.result.error))
+      $util.error($ctx.result.error.message, $ctx.result.error.type)
+    #end
+  
+    $utils.toJson($ctx.result)`
     //Set the new Lambda function as a data source for the AppSync API
     const createWalletDataSource = new appsync.CfnDataSource(this, "createWalletDataSource", {
       apiId: api.attrApiId,
@@ -301,6 +307,7 @@ export class WalletApiStack extends cdk.Stack {
       typeName: "Mutation",
       fieldName: "createWallet",
       dataSourceName: createWalletDataSource.name,
+      responseMappingTemplate:responseTemplate
     }).addDependsOn(createWalletDataSource);
 
     const recoverWalletDataSource = new appsync.CfnDataSource(this, "recoverWalletDataSource", {
@@ -335,6 +342,7 @@ export class WalletApiStack extends cdk.Stack {
       typeName: "Wallet",
       fieldName: "balance",
       dataSourceName: balanceWalletDataSource.name,
+      responseMappingTemplate:responseTemplate
     }).addDependsOn(balanceWalletDataSource);
 
     const getWalletDataSource = new appsync.CfnDataSource(this, "getWalletDataSource", {
@@ -352,6 +360,7 @@ export class WalletApiStack extends cdk.Stack {
       typeName: "Query",
       fieldName: "getWalletDetails",
       dataSourceName: getWalletDataSource.name,
+      responseMappingTemplate:responseTemplate
     }).addDependsOn(getWalletDataSource);
 
     const sendTransactionSource = new appsync.CfnDataSource(this, "sendTransactionSource", {
@@ -369,6 +378,7 @@ export class WalletApiStack extends cdk.Stack {
       typeName: "Mutation",
       fieldName: "sendTransaction",
       dataSourceName: sendTransactionSource.name,
+      responseMappingTemplate:responseTemplate
     }).addDependsOn(sendTransactionSource);
 
     // GEt Transactions

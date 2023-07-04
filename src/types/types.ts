@@ -1,5 +1,5 @@
 export interface Wallet {
-  address: any;
+  address: string;
 }
 export interface Transaction {
   fromAddress: string;
@@ -18,4 +18,9 @@ export interface Transaction {
 export interface PartialTransactionEvent {
   fromAddress: string;
   txHash: string;
+}
+
+export interface CustomError {
+  type: string;
+  message: string;
 }
