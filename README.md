@@ -5,20 +5,7 @@
 - Below is the architecture diagram of the system:
 ![Diagram](./systemdesign.jpeg)
 
-## TODOS
-- TESTS
-- CONFIG PARSER
-- Validation params
-- Improve error handling and have types (ie failed validation)
-- Encrypt secrets manager 
-- Consider using SQL for transactions and look into building resolvers to get data out of RDS.
-- MOVE VTL templates out of deploy code to a file
-- No Pagination on transactions
-- Nonce queueing ( currently one tx at a time)
-- Transaction monitor uses the queue retry to see if it is accepted by the blockchain,after 5 retries moves it to DLQ.This is not a great design because transaction mining can take longer then 5 retries. Think of increasing the retries and wait time in between or use cron lambdas.
-- Async transaction sending
-- Key sharding
-- Use an own indexer rather than 3rd party api
+
 
 
 
@@ -40,3 +27,18 @@ export ALCHEMY_API_KEY=""
 export REGION=""
 `
 
+
+# TODO
+- TESTS
+- CONFIG PARSER
+- Validation params
+- Improve error handling and have types (ie failed validation)
+- Encrypt secrets manager 
+- Consider using SQL for transactions and look into building resolvers to get data out of RDS.
+- MOVE VTL templates out of deploy code to a file
+- No Pagination on transactions
+- Nonce queueing ( currently one tx at a time)
+- Transaction monitor uses the queue retry to see if it is accepted by the blockchain,after 5 retries moves it to DLQ.This is not a great design because transaction mining can take longer then 5 retries. Think of increasing the retries and wait time in between or use cron lambdas.
+- Async transaction sending
+- Key sharding
+- Use an own indexer rather than 3rd party api
