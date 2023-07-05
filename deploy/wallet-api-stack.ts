@@ -124,7 +124,7 @@ export class WalletApiStack extends cdk.Stack {
 
     monitorTransactions.addEventSource(eventSource);
 
-    const createWalletLambda: any = new lambda.Function(this, "ordersHandler", {
+    const createWalletLambda: any = new lambda.Function(this, "createWalletHandler", {
       runtime: lambda.Runtime.NODEJS_16_X,
       handler: "src/lambda/createWallet.handler",
       code: lambda.Code.asset("./dist/lambda.zip"),

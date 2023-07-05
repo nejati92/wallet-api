@@ -14,15 +14,17 @@ export const createEthereumTransaction = async (
   console.log(
     `createEthereumTransaction called with amount: ${amount}, address:${toAddress}, fromAddress:${fromAddress}`,
   );
-  const secret = await new SecretsManager().getSecretValue({ SecretId: userId + fromAddress }).promise();
+  const [secret, nonce, blockNumber, gasPrice] = await Promise.all([
+    new SecretsManager().getSecretValue({ SecretId: userId + fromAddress }).promise(),
+    alchemy.core.getTransactionCount(fromAddress),
+    alchemy.core.getBlockNumber(),
+    alchemy.core.getGasPrice(),
+  ]);
   if (!secret.SecretString) throw new Error("Failed to retrieve the PK");
   const privateKey = secret.SecretString;
   const value = Utils.parseEther(amount);
-  const nonce = await alchemy.core.getTransactionCount(fromAddress);
-  const blockNumber = await alchemy.core.getBlockNumber();
   const gasLimit = Utils.hexValue(250000); // TODO: make this config base
   const chainId = parseInt(getEnvironmentVariable(process.env.CHAIN_ID, "CHAIN_ID"));
-  const gasPrice = await alchemy.core.getGasPrice();
   const tx = {
     nonce,
     gasLimit,
@@ -47,13 +49,15 @@ export const createEthereumTransaction = async (
     status: "PENDING",
     blockNumber: blockNumber + 1,
   };
-  await transactionDb.saveTransaction(fromAddress, toAddress, sentTransaction.hash, transaction);
-  await new SQS()
-    .sendMessage({
-      QueueUrl: getEnvironmentVariable(process.env.TRANSACTION_QUEUE_URL, "TRANSACTION_QUEUE_URL"),
-      MessageBody: JSON.stringify(transaction),
-    })
-    .promise();
+  await Promise.all([
+    transactionDb.saveTransaction(fromAddress, toAddress, sentTransaction.hash, transaction),
+    new SQS()
+      .sendMessage({
+        QueueUrl: getEnvironmentVariable(process.env.TRANSACTION_QUEUE_URL, "TRANSACTION_QUEUE_URL"),
+        MessageBody: JSON.stringify(transaction),
+      })
+      .promise(),
+  ]);
   return sentTransaction.hash;
 };
 
