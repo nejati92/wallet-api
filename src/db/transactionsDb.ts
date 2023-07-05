@@ -1,10 +1,14 @@
 import { DynamoDB } from "aws-sdk";
 import { Transaction } from "../types/types";
+import { getEnvironmentVariable } from "../utils";
 export class TransactionDb {
   private client: DynamoDB.DocumentClient;
 
   constructor() {
-    this.client = new DynamoDB.DocumentClient({ region: process.env.REGION, apiVersion: "2012-08-10" });
+    this.client = new DynamoDB.DocumentClient({
+      region: getEnvironmentVariable(process.env.REGION, "REGION"),
+      apiVersion: "2012-08-10",
+    });
   }
 
   public async saveTransaction(
@@ -13,7 +17,7 @@ export class TransactionDb {
     transactionHash: string,
     transaction: Transaction,
   ): Promise<void> {
-    const tableName = process.env.TRANSACTION_TABLE!;
+    const tableName = getEnvironmentVariable(process.env.TRANSACTION_TABLE!, "TRANSACTION_TABLE");
     const saveQuery: DynamoDB.DocumentClient.BatchWriteItemInput = {
       RequestItems: {
         [tableName]: [

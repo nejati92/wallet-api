@@ -1,13 +1,17 @@
 import { DynamoDB } from "aws-sdk";
+import { getEnvironmentVariable } from "../utils";
 export class WalletDb {
   private client: DynamoDB.DocumentClient;
 
   constructor() {
-    this.client = new DynamoDB.DocumentClient({ region: process.env.REGION, apiVersion: "2012-08-10" });
+    this.client = new DynamoDB.DocumentClient({
+      region: getEnvironmentVariable(process.env.REGION, "REGION"),
+      apiVersion: "2012-08-10",
+    });
   }
 
   public async saveWallet(userId: string, address: string, index: number): Promise<void> {
-    const tableName = process.env.WALLET_TABLE!;
+    const tableName = getEnvironmentVariable(process.env.WALLET_TABLE, "WALLET_TABLE");
     const batchWrite: DynamoDB.DocumentClient.BatchWriteItemInput = {
       RequestItems: {
         [tableName]: [
@@ -37,15 +41,13 @@ export class WalletDb {
   }
 
   public async getWallets(id: string): Promise<
-    | {
-        address: string;
-      }[]
-    | undefined
+    {
+      address: string;
+    }[]
   > {
     const getQuery: DynamoDB.DocumentClient.QueryInput = {
-      TableName: process.env.WALLET_TABLE!,
+      TableName: getEnvironmentVariable(process.env.WALLET_TABLE, "WALLET_TABLE"),
       KeyConditionExpression: "id = :id",
-      FilterExpression: "attribute_not_exists(mnemonic)",
       ExpressionAttributeValues: {
         ":id": "WALLET#" + id,
       },
@@ -53,14 +55,14 @@ export class WalletDb {
     const response = await this.client.query(getQuery).promise();
     return (
       response.Items?.map((x) => {
-        return { address: x.sortKey };
-      }) || undefined
+        return { address: x?.sortKey as string };
+      }) || []
     );
   }
 
   public async getWalletIndex(userId: string): Promise<number | undefined> {
     const getQuery: DynamoDB.DocumentClient.GetItemInput = {
-      TableName: process.env.WALLET_TABLE!,
+      TableName: getEnvironmentVariable(process.env.WALLET_TABLE!, "WALLET_TABLE"),
       Key: {
         id: userId,
         sortKey: userId,

@@ -1,41 +1,46 @@
-type Mutation {
-  createWallet(network: String): [Wallet]! @aws_cognito_user_pools
-  recoverWallet(mnemonic: String!): Wallet! @aws_cognito_user_pools
-  sendTransaction(address: String!, fromAddress: String!, amount: String!): String! @aws_cognito_user_pools
-}
-
-type Query {
-  getWalletDetails(address: String): [Wallet] @aws_cognito_user_pools
-  getTransactions(address: String): [Transaction] @aws_cognito_user_pools
-}
-
 type Balance {
-  tokens: [Token]
-}
-
-type Wallet {
-  address: String!
-  balance: Balance
-  transactions: [Transaction]
+	tokens: [Token]
 }
 
 type Token {
-  name: String
-  isNative: Boolean
-  amount: String
-  rawAmount: String
-  decimal: Int
-  contractAddress: String
+	name: String
+	isNative: Boolean
+	amount: String
+	rawAmount: String
+	decimal: Int
+	contractAddress: String
 }
 
 type Transaction {
-  blockNumber: Int
-  fromAddress: String
-  gasLimit: String
-  gasPrice: String
-  nonce: Int
-  status: String
-  toAddress: String
-  value: String
-  txHash: String
+	blockNumber: Int
+	fromAddress: String
+	gasLimit: String
+	gasPrice: String
+	nonce: Int
+	status: String
+	toAddress: String
+	value: String
+	txHash: String
+}
+
+type Wallet {
+	address: String!
+	balance: Balance
+	transactions: [Transaction]
+}
+
+type Mutation {
+	createWallet: [Wallet]!
+		@aws_cognito_user_pools
+	recoverWallet(mnemonic: String!): Wallet!
+		@aws_cognito_user_pools
+	sendTransaction(address: String!, fromAddress: String!, amount: String!): String!
+		@aws_cognito_user_pools
+}
+
+type Query {
+	getWalletDetails: [Wallet]
+		@aws_cognito_user_pools
+	getTransactions(address: String!): [Transaction]
+		@aws_cognito_user_pools
 }

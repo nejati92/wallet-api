@@ -1,21 +1,19 @@
-import { Network, Alchemy, Utils, Wallet } from "alchemy-sdk";
-import { getWalletDetails } from "./WalletService";
+import { Alchemy, Utils, Wallet } from "alchemy-sdk";
 import { SQS, SecretsManager } from "aws-sdk";
 import { PartialTransactionEvent, Transaction } from "../types/types";
 import { TransactionDb } from "../db/transactionsDb";
-const network = process.env.NETWORK as "ETH_SEPOLIA" | "ETH_MAINNET";
-const settings = {
-  apiKey: process.env.ALCHEMY_API_KEY,
-  network: Network[network],
-};
-const alchemy = new Alchemy(settings);
+import { getEnvironmentVariable } from "../utils";
 export const createEthereumTransaction = async (
   amount: string,
   toAddress: string,
   fromAddress: string,
   userId: string,
+  alchemy: Alchemy,
+  transactionDb: TransactionDb,
 ) => {
-  console.log(`amount: ${amount}, address:${toAddress}, fromAddress:${fromAddress}`);
+  console.log(
+    `createEthereumTransaction called with amount: ${amount}, address:${toAddress}, fromAddress:${fromAddress}`,
+  );
   const secret = await new SecretsManager().getSecretValue({ SecretId: userId + fromAddress }).promise();
   if (!secret.SecretString) throw new Error("Failed to retrieve the PK");
   const privateKey = secret.SecretString;
@@ -23,7 +21,7 @@ export const createEthereumTransaction = async (
   const nonce = await alchemy.core.getTransactionCount(fromAddress);
   const blockNumber = await alchemy.core.getBlockNumber();
   const gasLimit = Utils.hexValue(250000); // TODO: make this config base
-  const chainId = parseInt(process.env.CHAIN_ID!);
+  const chainId = parseInt(getEnvironmentVariable(process.env.CHAIN_ID, "CHAIN_ID"));
   const gasPrice = await alchemy.core.getGasPrice();
   const tx = {
     nonce,
@@ -34,7 +32,7 @@ export const createEthereumTransaction = async (
     chainId,
     from: fromAddress,
   };
-  console.log("Sent transaction", tx);
+  console.log("Constructed transaction", tx);
   const rawTx = await new Wallet(privateKey).signTransaction(tx);
   const sentTransaction = await alchemy.core.sendTransaction(rawTx);
   console.log("Sent transaction", sentTransaction);
@@ -49,22 +47,25 @@ export const createEthereumTransaction = async (
     status: "PENDING",
     blockNumber: blockNumber + 1,
   };
-  await new TransactionDb().saveTransaction(fromAddress, toAddress, sentTransaction.hash, transaction);
+  await transactionDb.saveTransaction(fromAddress, toAddress, sentTransaction.hash, transaction);
   await new SQS()
     .sendMessage({
-      QueueUrl: process.env.TRANSACTION_QUEUE_URL!,
+      QueueUrl: getEnvironmentVariable(process.env.TRANSACTION_QUEUE_URL, "TRANSACTION_QUEUE_URL"),
       MessageBody: JSON.stringify(transaction),
     })
     .promise();
   return sentTransaction.hash;
 };
 
-export const monitorTransaction = async (partialTx: PartialTransactionEvent) => {
+export const monitorTransaction = async (
+  partialTx: PartialTransactionEvent,
+  alchemy: Alchemy,
+  transactionDb: TransactionDb,
+) => {
   try {
-    console.log(partialTx.txHash);
+    console.log(`monitorTransaction called with :${partialTx.txHash}`);
     const tx = await alchemy.core.getTransaction(partialTx.txHash);
-    console.log(`TX:${tx}`);
-    if (tx?.confirmations && tx?.confirmations > 0 && tx?.gasPrice && tx.value && tx.from && tx.to && tx.hash) {
+    if (tx?.confirmations && tx?.gasPrice && tx.value && tx.from && tx.to && tx.hash) {
       const transaction: Transaction = {
         nonce: tx?.nonce,
         gasPrice: tx?.gasPrice?.toString(),
@@ -77,16 +78,16 @@ export const monitorTransaction = async (partialTx: PartialTransactionEvent) => 
         blockNumber: tx?.blockNumber,
       };
 
-      await new TransactionDb().saveTransaction(
+      await transactionDb.saveTransaction(
         transaction.fromAddress,
         transaction.toAddress,
         transaction.txHash,
         transaction,
       );
-      console.log("passed");
+      console.log("Transaction has been processed by the blockchain");
     } else {
-      console.log("Failed");
-      throw new Error("Bad Tx");
+      console.log("Transaction has not been processed by the blockchain");
+      throw new Error("Transaction has not been processed by the blockchain");
     }
   } catch (e) {
     console.error(`Error:${e}`);
