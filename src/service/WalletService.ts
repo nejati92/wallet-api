@@ -3,42 +3,42 @@ import * as bip39 from "bip39";
 import { WalletDb } from "../db/walletDb";
 import { SecretsManager } from "aws-sdk";
 import { Wallet } from "../types/types";
-const dbClient = new WalletDb();
-export const createWallet = async (userId: string): Promise<Wallet[]> => {
-  let index = await dbClient.getWalletIndex(userId);
+
+export const createWallet = async (userId: string, walletDbClient: WalletDb): Promise<Wallet[]> => {
+  let index = await walletDbClient.getWalletIndex(userId);
   if (!index && index !== 0) {
     const mnemonic = bip39.generateMnemonic(128);
     await new SecretsManager().createSecret({ Name: userId, SecretString: mnemonic }).promise();
-    return saveAndGetAllWallets(userId, mnemonic);
+    return saveAndGetAllWallets(userId, mnemonic, walletDbClient);
   }
   index = index + 1;
   const secret = await new SecretsManager().getSecretValue({ SecretId: userId }).promise();
   if (!secret.SecretString) throw new Error("Failed to create wallet");
   const mnemonic = secret.SecretString;
-  return saveAndGetAllWallets(userId, mnemonic, index);
+  return saveAndGetAllWallets(userId, mnemonic, walletDbClient, index);
 };
 
-export const saveAndGetAllWallets = async (userId: string, mnemonic: string, index = 0) => {
+export const saveAndGetAllWallets = async (userId: string, mnemonic: string, walletDbClient: WalletDb, index = 0) => {
   const { address, privateKey } = await getWalletDetails(mnemonic, index);
   await new SecretsManager().createSecret({ Name: userId + address, SecretString: privateKey }).promise();
-  await dbClient.saveWallet(userId, address, index);
-  const wallets = await getWallets(userId);
-  return wallets;
-};
-
-export const getWallets = async (userId: string): Promise<Wallet[]> => {
-  const wallets = await dbClient.getWallets(userId);
+  await walletDbClient.saveWallet(userId, address, index);
+  const wallets = await getWallets(userId, walletDbClient);
   if (!wallets || wallets?.length === 0) {
     throw new Error("Failed to retrieve wallets");
   }
   return wallets;
 };
 
-export const recoverWallet = async (mnemonic: string, userId: string) => {
+export const getWallets = async (userId: string, walletDbClient: WalletDb): Promise<Wallet[]> => {
+  const wallets = await walletDbClient.getWallets(userId);
+  return wallets;
+};
+
+export const recoverWallet = async (mnemonic: string, userId: string, walletDbClient: WalletDb) => {
   await new SecretsManager().createSecret({ Name: userId, SecretString: mnemonic }).promise();
   const { address, privateKey } = await getWalletDetails(mnemonic);
   await new SecretsManager().createSecret({ Name: userId + address, SecretString: privateKey }).promise();
-  await dbClient.saveWallet(userId, address, 0);
+  await walletDbClient.saveWallet(userId, address, 0);
   return { address };
 };
 
