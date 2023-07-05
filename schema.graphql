@@ -34,7 +34,7 @@ type Mutation {
 		@aws_cognito_user_pools
 	recoverWallet(mnemonic: String!): Wallet!
 		@aws_cognito_user_pools
-	sendTransaction(address: String!, fromAddress: String!, amount: String!): String!
+	sendTransaction(toAddress: String!, fromAddress: String!, amount: String!): String!
 		@aws_cognito_user_pools
 }
 
